@@ -212,9 +212,8 @@ export const EditorPane = memo(
                   : p === "ollama"
                     ? s.ollamaModelId
                     : p === "openai-compatible"
-                      ? s.customEndpoints.find(
-                          (e) => e.id === "",
-                        )?.modelId ?? ""
+                      ? (s.customEndpoints.find((e) => e.id === "")?.modelId ??
+                        "")
                       : p === "openrouter"
                         ? s.openrouterModelId
                         : s.autocompleteModelId;
@@ -464,7 +463,8 @@ export const EditorPane = memo(
         );
       }
 
-      const canForce = doc.status === "toolarge" && doc.size <= FORCE_READ_LIMIT;
+      const canForce =
+        doc.status === "toolarge" && doc.size <= FORCE_READ_LIMIT;
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
           <div className="text-sm text-foreground">

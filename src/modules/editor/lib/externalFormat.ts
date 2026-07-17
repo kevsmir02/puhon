@@ -88,7 +88,9 @@ export function resolveFormatter(
   if (override) return override;
   const global = prefs.editorFormatter;
   if (global === "custom") return global;
-  return langId && FORMATTERS[global].langs.includes(langId) ? global : "prettier";
+  return langId && FORMATTERS[global].langs.includes(langId)
+    ? global
+    : "prettier";
 }
 
 function dirname(path: string): string {
