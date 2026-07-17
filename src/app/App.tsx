@@ -757,8 +757,6 @@ export default function App() {
       "view.zenMode": () => setZenMode((v) => !v),
       "editor.undo": () => editorRefs.current.get(activeId)?.undo(),
       "editor.redo": () => editorRefs.current.get(activeId)?.redo(),
-      "editor.aiComplete": () =>
-        editorRefs.current.get(activeId)?.triggerAiComplete(),
       "editor.codeComplete": () =>
         editorRefs.current.get(activeId)?.triggerCodeComplete(),
     }),
@@ -801,7 +799,6 @@ export default function App() {
       if (
         id === "editor.undo" ||
         id === "editor.redo" ||
-        id === "editor.aiComplete" ||
         id === "editor.codeComplete"
       ) {
         return activeTab?.kind !== "editor";

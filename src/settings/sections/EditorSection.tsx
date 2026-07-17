@@ -156,7 +156,6 @@ export function EditorSection() {
 }
 
 const FORMATTER_OPTIONS: EditorFormatter[] = [
-  "lsp",
   ...(Object.keys(FORMATTERS) as EditorFormatter[]),
   "custom",
 ];
@@ -233,7 +232,7 @@ function FormatterOverrides() {
           className="h-8 rounded-md border border-border px-3 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           onClick={() => {
             const first = unused[0];
-            if (first) update({ ...byLang, [first.ext]: "lsp" });
+            if (first) update({ ...byLang, [first.ext]: "prettier" });
           }}
         >
           Add override

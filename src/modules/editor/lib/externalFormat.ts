@@ -13,7 +13,7 @@ type CommandOutput = {
   timed_out: boolean;
 };
 
-export type ExternalFormatter = Exclude<EditorFormatter, "lsp">;
+export type ExternalFormatter = EditorFormatter;
 
 type FormatterDef = {
   label: string;
@@ -66,7 +66,6 @@ export const FORMATTERS: Record<
 };
 
 export const FORMATTER_LABELS: Record<EditorFormatter, string> = {
-  lsp: "Language server",
   custom: "Custom command",
   ...Object.fromEntries(
     Object.entries(FORMATTERS).map(([id, def]) => [id, def.label]),
@@ -88,8 +87,8 @@ export function resolveFormatter(
   const override = langId ? prefs.editorFormatterByLang[langId] : undefined;
   if (override) return override;
   const global = prefs.editorFormatter;
-  if (global === "lsp" || global === "custom") return global;
-  return langId && FORMATTERS[global].langs.includes(langId) ? global : "lsp";
+  if (global === "custom") return global;
+  return langId && FORMATTERS[global].langs.includes(langId) ? global : "prettier";
 }
 
 function dirname(path: string): string {

@@ -13,16 +13,15 @@ describe("resolveFormatter", () => {
 
   it("global external applies only to languages it understands", () => {
     expect(resolveFormatter("ts", prefs("biome"))).toBe("biome");
-    expect(resolveFormatter("py", prefs("biome"))).toBe("lsp");
-    expect(resolveFormatter("rs", prefs("prettier"))).toBe("lsp");
+    expect(resolveFormatter("py", prefs("biome"))).toBe("prettier");
+    expect(resolveFormatter("rs", prefs("prettier"))).toBe("prettier");
   });
 
-  it("lsp and custom globals always apply", () => {
-    expect(resolveFormatter("py", prefs("lsp"))).toBe("lsp");
+  it("custom global always applies", () => {
     expect(resolveFormatter("py", prefs("custom"))).toBe("custom");
   });
 
-  it("unknown language falls back to lsp for external globals", () => {
-    expect(resolveFormatter(null, prefs("biome"))).toBe("lsp");
+  it("unknown language falls back to prettier for external globals", () => {
+    expect(resolveFormatter(null, prefs("biome"))).toBe("prettier");
   });
 });

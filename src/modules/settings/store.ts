@@ -174,7 +174,6 @@ export type Preferences = {
 };
 
 export type EditorFormatter =
-  | "lsp"
   | "biome"
   | "prettier"
   | "ruff"
@@ -334,7 +333,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   editorAutoSave: false,
   editorAutoSaveDelay: 1000,
   editorFormatOnSave: false,
-  editorFormatter: "lsp",
+  editorFormatter: "prettier",
   editorFormatterByLang: {},
   editorCustomFormatCommand: "",
   lspActivation: {},

@@ -47,7 +47,6 @@ export type ShortcutId =
   | "sidebar.toggle"
   | "editor.undo"
   | "editor.redo"
-  | "editor.aiComplete"
   | "editor.codeComplete";
 
 export type ShortcutGroup =
@@ -356,12 +355,6 @@ export const SHORTCUTS: Shortcut[] = [
     label: "Redo",
     group: "Editor",
     defaultBindings: [{ [MOD_PROP]: true, key: "y" }],
-  },
-  {
-    id: "editor.aiComplete",
-    label: "Trigger AI completion",
-    group: "Editor",
-    defaultBindings: [{ alt: true, key: "\\" }],
   },
   {
     id: "editor.codeComplete",
