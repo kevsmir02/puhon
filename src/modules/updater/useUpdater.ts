@@ -1,13 +1,17 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import {
+  check,
+  type Update,
+  type DownloadEvent,
+} from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useState } from "react";
 import { IS_LINUX } from "@/lib/platform";
 
 const LAST_CHECK_KEY = "terax:updater:last-check";
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const GITHUB_LATEST_RELEASE =
-  "https://api.github.com/repos/crynta/terax-ai/releases/latest";
+  "https://api.github.com/repos/kevsmir02/terax/releases/latest";
 
 export interface ManualUpdateInfo {
   version: string;
@@ -72,12 +76,10 @@ async function checkLinuxRelease(): Promise<ManualUpdateInfo | null> {
 }
 
 interface Options {
-  /** Skip the time-based throttle on automatic startup checks. */
   manual?: boolean;
 }
 
 interface HookOptions {
-  /** When false, the hook does not run an automatic check on mount. */
   autoCheck?: boolean;
 }
 
@@ -120,7 +122,7 @@ export function useUpdater({ autoCheck = true }: HookOptions = {}) {
     let downloaded = 0;
     setStatus({ kind: "downloading", downloaded: 0, contentLength: null });
     try {
-      await update.downloadAndInstall((event) => {
+      await update.downloadAndInstall((event: DownloadEvent) => {
         if (event.event === "Started") {
           total = event.data.contentLength ?? null;
           setStatus({
