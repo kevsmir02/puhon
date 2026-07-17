@@ -49,18 +49,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --bundles rpm
 
-      - name: Upload RPM to release
+      - name: Create release and upload RPM
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RPM=$(ls src-tauri/target/release/bundle/rpm/*.rpm | head -n1)
-          gh release upload "$GITHUB_REF_NAME" "$RPM" "$RPM.sig" --clobber
-
-      - name: Upload updater manifest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          JSON=$(ls src-tauri/target/release/bundle/latest.json 2>/dev/null | head -n1)
-          if [ -n "$JSON" ]; then
-            gh release upload "$GITHUB_REF_NAME" "$JSON" --clobber
+          gh release create "$GITHUB_REF_NAME" "$RPM" --title "$GITHUB_REF_NAME" --generate-notes
+          if [ -f "$RPM.sig" ]; then
+            gh release upload "$GITHUB_REF_NAME" "$RPM.sig" --clobber
           fi
