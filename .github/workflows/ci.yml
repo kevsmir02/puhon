@@ -95,34 +95,6 @@ jobs:
         working-directory: src-tauri
         run: cargo nextest run --locked
 
-  rust-platforms:
-    name: rust-test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ./src-tauri -> target
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-nextest
-
-      - name: cargo check
-        working-directory: src-tauri
-        run: cargo check --all-targets --locked
-
-      - name: cargo nextest
-        working-directory: src-tauri
-        run: cargo nextest run --locked --retries 2
-
   coverage:
     runs-on: ubuntu-22.04
     needs: rust

@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
+#[allow(dead_code)]
 const HEADER_BLOCKLIST: &[&str] = &[
     "host",
     "content-length",
@@ -164,6 +165,7 @@ async fn classify_and_collect_safe_ips(
     Ok(safe)
 }
 
+#[allow(dead_code)]
 fn sanitize_headers(headers: Option<HashMap<String, String>>) -> Result<HeaderMap, String> {
     let mut map = HeaderMap::new();
     let Some(h) = headers else { return Ok(map) };
