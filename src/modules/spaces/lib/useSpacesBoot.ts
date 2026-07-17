@@ -52,15 +52,18 @@ export function useSpacesBoot({
 
     void (async () => {
       try {
+        // Hydrate prefs + subscribe to cross-window changes. Must run
+        // unconditionally so the main window stays in sync with the
+        // settings window (background opacity/blur, etc.).
+        await usePreferencesStore
+          .getState()
+          .init()
+          .catch(() => {});
+
         const { spaces, activeId, states } = await loadAll();
 
         if (spaces.length === 0) {
           const root = launchCwd ?? home ?? null;
-          // Hydrate prefs before reading the saved workspace env.
-          await usePreferencesStore
-            .getState()
-            .init()
-            .catch(() => {});
           const meta: SpaceMeta = {
             id: DEFAULT_SPACE_ID,
             name: "Default",
