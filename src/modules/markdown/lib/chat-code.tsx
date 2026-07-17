@@ -2,14 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  CheckmarkCircle01Icon,
-  CopyIcon,
-} from "@hugeicons/core-free-icons";
+import { CheckmarkCircle01Icon, CopyIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { memo, useEffect, useRef, useState } from "react";
 
-import { highlight, isHighlightable, type HighlightedNode } from "./chat-code-lezer";
+import {
+  highlight,
+  isHighlightable,
+  type HighlightedNode,
+} from "./chat-code-lezer";
 
 const POSIX_SHELL = new Set([
   "bash",
@@ -31,14 +32,16 @@ const WINDOWS_SHELL = new Set([
 const SHELL_LANGS = new Set([...POSIX_SHELL, ...WINDOWS_SHELL]);
 
 function shellPrompt(lang: string): string {
-  if (WINDOWS_SHELL.has(lang)) return lang === "cmd" || lang === "bat" || lang === "batch" ? ">" : "PS>";
+  if (WINDOWS_SHELL.has(lang))
+    return lang === "cmd" || lang === "bat" || lang === "batch" ? ">" : "PS>";
   return "$";
 }
 
 function normalizeLangLabel(raw: string): string {
   const lower = raw.toLowerCase();
   if (POSIX_SHELL.has(lower)) return "bash";
-  if (lower === "pwsh" || lower === "ps1" || lower === "ps") return "powershell";
+  if (lower === "pwsh" || lower === "ps1" || lower === "ps")
+    return "powershell";
   if (lower === "bat" || lower === "batch") return "cmd";
   return lower || "text";
 }
