@@ -108,7 +108,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwQ0M5QjRBRjAwQzc4QkUKUldTK2VBendTcHZNY0FweHNsZ1Z6cHBweGo3U2hXdHl6dmdDRll2Vzg1cWRZYS90Z2VKU3g1MVkK",
       "endpoints": [
-        "https://github.com/kevsmir02/terax/releases/latest/download/latest.json"
+        "https://github.com/kevsmir02/terax-ai/releases/latest/download/latest.json"
       ]
     }
   }

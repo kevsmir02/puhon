@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useUpdater } from "./useUpdater";
 
 const RELEASE_DOWNLOAD_URL =
-  "https://github.com/kevsmir02/terax/releases/latest";
+  "https://github.com/kevsmir02/terax-ai/releases/latest";
 
 export function UpdaterDialog() {
   const { status, install, dismiss } = useUpdater();

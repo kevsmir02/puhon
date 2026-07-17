@@ -11,7 +11,7 @@ import { IS_LINUX } from "@/lib/platform";
 const LAST_CHECK_KEY = "terax:updater:last-check";
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const GITHUB_LATEST_RELEASE =
-  "https://api.github.com/repos/kevsmir02/terax/releases/latest";
+  "https://api.github.com/repos/kevsmir02/terax-ai/releases/latest";
 
 export interface ManualUpdateInfo {
   version: string;
