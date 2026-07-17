@@ -27,3 +27,8 @@ stats.html
 
 *.tsbuildinfo
 package-lock.json
+
+# Local tooling
+.codegraph
+.superpowers
+docs/superpowers
