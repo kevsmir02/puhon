@@ -24,6 +24,8 @@
 
 Terax is a lightweight open-source terminal workspace built on Tauri 2 + Rust and React 19. A native PTY backend with a WebGL renderer, plus a code editor, file explorer, source control with a git graph, and a web preview pane built in. About 7-8 MB on disk. No telemetry. No account.
 
+> **This is a fork of [Terax](https://github.com/crynta/terax-ai) with all AI and LSP features stripped out.** The original Terax includes an agentic AI side-panel, inline autocomplete, multi-provider model support, sub-agents, and LSP-based code intelligence. This fork keeps the terminal, editor, file explorer, source control, themes, and everything else — just without the AI.
+
 ## Screenshots
 
 <table>
