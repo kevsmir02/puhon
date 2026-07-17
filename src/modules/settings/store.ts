@@ -143,8 +143,6 @@ export type EditorFormatter =
   | "zigfmt"
   | "custom";
 
-
-
 const STORE_PATH = "terax-settings.json";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
@@ -607,5 +605,3 @@ export async function onPreferencesChange(
     unsubEvent();
   };
 }
-
-

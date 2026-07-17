@@ -18,7 +18,6 @@ import {
 } from "./osc-handlers";
 import { openPty, type PtySession } from "./pty-bridge";
 import "../block/block.css";
-import { ensureAgentActivityListener, isAgentActivePty } from "./agentActivity";
 import {
   acquireSlot,
   applyBackgroundActive,
@@ -293,7 +292,7 @@ export function ptyIdForLeaf(leafId: number): number | null {
 }
 
 function leafBusy(s: Session): boolean {
-  return s.commandRunning || (s.pty !== null && isAgentActivePty(s.pty.id));
+  return s.commandRunning;
 }
 
 const HIDDEN_RELEASE_DELAY_MS = 300;
@@ -358,13 +357,6 @@ function onLeafCommandState(leafId: number, running: boolean): void {
     }, 0);
   }
 }
-
-ensureAgentActivityListener((ptyId) => {
-  const leafId = leafIdForPty(ptyId);
-  if (leafId === null) return;
-  const s = sessions.get(leafId);
-  if (s) scheduleHiddenRelease(leafId, s);
-});
 
 configureRendererPool({
   resolveLeaf(leafId) {

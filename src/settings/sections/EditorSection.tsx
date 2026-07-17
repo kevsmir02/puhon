@@ -148,7 +148,6 @@ export function EditorSection() {
           </>
         )}
       </div>
-
     </div>
   );
 }

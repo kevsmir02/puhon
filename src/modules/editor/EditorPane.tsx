@@ -1,6 +1,6 @@
 import { usePreferencesStore } from "@/modules/settings/preferences";
 
-import { acceptCompletion, startCompletion } from "@codemirror/autocomplete";
+import { startCompletion } from "@codemirror/autocomplete";
 import { redo, undo } from "@codemirror/commands";
 import {
   findNext,
@@ -25,7 +25,6 @@ import {
   useRef,
 } from "react";
 import { toast } from "sonner";
-import { inlineCompletion } from "./lib/autocomplete/inlineExtension";
 import { diagnosticsReporter } from "./lib/diagnosticsReporter";
 import { useDiagnosticsStore } from "./lib/diagnosticsStore";
 import {
@@ -198,40 +197,6 @@ export const EditorPane = memo(
         indentCompartment.of(DEFAULT_INDENT),
         languageCompartment.of([]),
         diagnosticsReporter(() => pathRef.current),
-        // Before inlineCompletion so an open popup wins Tab over the ghost.
-        Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
-        inlineCompletion({
-          getPrefs: () => {
-            const s = usePreferencesStore.getState();
-            const p = s.autocompleteProvider;
-            const modelId =
-              p === "lmstudio"
-                ? s.lmstudioModelId
-                : p === "mlx"
-                  ? s.mlxModelId
-                  : p === "ollama"
-                    ? s.ollamaModelId
-                    : p === "openai-compatible"
-                      ? (s.customEndpoints.find((e) => e.id === "")?.modelId ??
-                        "")
-                      : p === "openrouter"
-                        ? s.openrouterModelId
-                        : s.autocompleteModelId;
-            return {
-              enabled: s.autocompleteEnabled,
-              trigger: s.autocompleteTrigger,
-              provider: p,
-              modelId,
-              apiKey: null,
-              lmstudioBaseURL: s.lmstudioBaseURL,
-              mlxBaseURL: s.mlxBaseURL,
-              ollamaBaseURL: s.ollamaBaseURL,
-              openaiCompatibleBaseURL: s.openaiCompatibleBaseURL,
-            };
-          },
-          getPath: () => pathRef.current,
-          getLanguage: () => languageRef.current,
-        }),
         keymap.of([
           {
             key: "Mod-s",
