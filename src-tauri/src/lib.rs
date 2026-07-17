@@ -1,6 +1,6 @@
 pub mod modules;
 
-use modules::{agent, fs, git, history, lsp, net, pty, secrets, shell, workspace};
+use modules::{fs, git, history, net, pty, secrets, shell, workspace};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -157,21 +157,6 @@ async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(windows)]
-    {
-        let args: Vec<String> = std::env::args().collect();
-        if args.get(1).map(String::as_str) == Some("__terax_notify") {
-            if let (Some(agent), Some(event)) = (args.get(2), args.get(3)) {
-                agent::emit_conout_marker(agent, event);
-            }
-            use std::io::Write;
-            let mut out = std::io::stdout();
-            let _ = out.write_all(b"{}");
-            let _ = out.flush();
-            std::process::exit(0);
-        }
-    }
-
     let launch = parse_launch_target();
     let cli_dir = launch.dir.clone();
     workspace::init_launch_cwd(cli_dir.as_deref());
@@ -224,7 +209,6 @@ pub fn run() {
         .manage(secrets::SecretsState::default())
         .manage(fs::watch::FsWatchState::default())
         .manage(history::HistoryState::default())
-        .manage(lsp::LspState::default())
         .manage(fs::grep::ContentSearchState::default())
         .manage({
             let registry = workspace::WorkspaceRegistry::default();
@@ -259,12 +243,6 @@ pub fn run() {
             fs::mutate::fs_copy,
             fs::watch::fs_watch_add,
             fs::watch::fs_watch_remove,
-            lsp::lsp_detect,
-            lsp::lsp_host_pid,
-            lsp::lsp_resolve_root,
-            lsp::lsp_spawn,
-            lsp::lsp_send,
-            lsp::lsp_kill,
             fs::search::fs_search,
             fs::search::fs_list_files,
             fs::grep::fs_grep,
@@ -305,15 +283,11 @@ pub fn run() {
             get_launch_dir,
             get_launch_files,
             open_settings_window,
-            agent::agent_enable_hooks,
-            agent::agent_hooks_status,
             secrets::secrets_get,
             secrets::secrets_set,
             secrets::secrets_delete,
             secrets::secrets_get_all,
             net::lm_ping,
-            net::ai_http_request,
-            net::ai_http_stream,
             history::history_suggest,
             history::history_commands,
             history::history_record,
@@ -323,13 +297,6 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             match event {
-                // Servers exit on stdin EOF, but destructors are not guaranteed
-                // on process exit; kill explicitly.
-                tauri::RunEvent::Exit => {
-                    if let Some(state) = app.try_state::<lsp::LspState>() {
-                        state.kill_all();
-                    }
-                }
                 // macOS delivers "Open With" files here, not as argv (cold and
                 // warm start, several at once). Seed the drain-once state and
                 // emit; canonicalize so the /tmp -> /private/tmp symlink can't

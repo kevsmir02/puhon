@@ -126,7 +126,6 @@ export function Header({
         >
           <HugeiconsIcon icon={CommandIcon} size={14} strokeWidth={1.75} />
         </Button>
-
       </div>
 
       {!IS_MAC && <span className="mx-1 h-full w-px shrink-0 bg-border/70" />}

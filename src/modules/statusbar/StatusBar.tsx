@@ -49,7 +49,6 @@ export function StatusBar({
           </Tooltip>
         ) : null}
       </div>
-
     </footer>
   );
 }

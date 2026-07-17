@@ -80,37 +80,34 @@ export function WorkspaceInputBar({
   ) : null;
 
   const content = isBlockTab ? (
-      <div className="shrink-0 border-t border-border/60 bg-card/40 px-3 py-2">
-        <div className="flex flex-col gap-2 rounded-lg px-1 py-1">
-          {terminalChips}
-          <div className="flex items-end gap-2.5">
-            <div className="relative min-w-0 flex-1">
-              {controller && activeLeafId != null && (
-                <Suspense fallback={null}>
-                  <ShellInput
-                    leafId={activeLeafId}
-                    mode={blockMode}
-                    focused={true}
-                    themeKey={themeKey}
-                    onSubmit={controller.submitCommand}
-                    onInterrupt={controller.interrupt}
-                    getCwd={controller.getCwd}
-                  />
-                </Suspense>
-              )}
-            </div>
+    <div className="shrink-0 border-t border-border/60 bg-card/40 px-3 py-2">
+      <div className="flex flex-col gap-2 rounded-lg px-1 py-1">
+        {terminalChips}
+        <div className="flex items-end gap-2.5">
+          <div className="relative min-w-0 flex-1">
+            {controller && activeLeafId != null && (
+              <Suspense fallback={null}>
+                <ShellInput
+                  leafId={activeLeafId}
+                  mode={blockMode}
+                  focused={true}
+                  themeKey={themeKey}
+                  onSubmit={controller.submitCommand}
+                  onInterrupt={controller.interrupt}
+                  getCwd={controller.getCwd}
+                />
+              </Suspense>
+            )}
           </div>
         </div>
       </div>
-    ) : null;
+    </div>
+  ) : null;
 
   if (!content) return null;
 
   return (
-    <div
-      data-state="open"
-      className="terax-reveal"
-    >
+    <div data-state="open" className="terax-reveal">
       <div>{content}</div>
     </div>
   );
