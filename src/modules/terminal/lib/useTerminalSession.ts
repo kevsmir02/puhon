@@ -344,7 +344,7 @@ function onLeafCommandState(leafId: number, running: boolean): void {
     return;
   }
   cancelHiddenRelease(s);
-  // A command started in a hidden released leaf (e.g. submitted by the AI):
+  // A command started in a hidden released leaf (e.g. submitted externally):
   // rebind its retained slot so output parses live instead of filling the
   // ring. Deferred: this callback fires inside xterm's parse loop and the
   // rebind touches the same terminal (fit/resize).
