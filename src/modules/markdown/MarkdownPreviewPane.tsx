@@ -3,6 +3,7 @@ import { MarkdownCode } from "./lib/markdown-code";
 import { cn } from "@/lib/utils";
 import { currentWorkspaceEnv } from "@/modules/workspace";
 import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import { MarkdownViewToggle } from "./MarkdownViewToggle";
@@ -26,6 +27,21 @@ type Props = {
 };
 
 const components = { code: MarkdownCode };
+
+function makeUrlTransform(filePath: string) {
+  const dir = filePath.replace(/[/\\][^/\\]*$/, "") || ".";
+  return (url: string, key: string) => {
+    if (key !== "src") return url;
+    // Pass through data: URIs and absolute HTTP(S) URLs unchanged
+    if (/^data:/i.test(url)) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    // Skip empty or anchor-only URLs
+    if (!url || url.startsWith("#")) return url;
+    // Resolve relative path against the markdown file's directory
+    const resolved = dir + "/" + url;
+    return convertFileSrc(resolved);
+  };
+}
 
 export function MarkdownPreviewPane({ path, visible, onSetView }: Props) {
   const [status, setStatus] = useState<Status>({ kind: "loading" });
@@ -88,6 +104,7 @@ export function MarkdownPreviewPane({ path, visible, onSetView }: Props) {
               className="select-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
               components={components}
               plugins={{ mermaid }}
+              urlTransform={makeUrlTransform(path)}
               mode="static"
               parseIncompleteMarkdown={false}
             >
