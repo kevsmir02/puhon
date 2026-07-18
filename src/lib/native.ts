@@ -381,3 +381,54 @@ export const native = {
       workspace: currentWorkspaceEnv(),
     }),
 };
+
+// ---- session storage ----
+
+export type SessionLoadResult = {
+  data: string;
+  cwd: string | null;
+  cols: number;
+  rows: number;
+  saved_at: number;
+} | null;
+
+export async function sessionSave(
+  spaceId: string,
+  tabId: number,
+  leafId: number,
+  data: string,
+  cwd: string | null,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  await invoke("session_save", {
+    spaceId,
+    tabId,
+    leafId,
+    data,
+    cwd,
+    cols,
+    rows,
+  });
+}
+
+export async function sessionLoad(
+  spaceId: string,
+  tabId: number,
+  leafId: number,
+): Promise<SessionLoadResult> {
+  const result = await invoke<SessionLoadResult>("session_load", {
+    spaceId,
+    tabId,
+    leafId,
+  });
+  return result ?? null;
+}
+
+export async function sessionDelete(
+  spaceId: string,
+  tabId: number,
+  leafId: number,
+): Promise<void> {
+  await invoke("session_delete", { spaceId, tabId, leafId });
+}
