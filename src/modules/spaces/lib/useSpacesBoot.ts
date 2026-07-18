@@ -111,24 +111,28 @@ export function useSpacesBoot({
         );
 
         // Load scrollback for restored terminal tabs.
-        const withRestored = await Promise.all(
-          restored.map(async (tab) => {
-            if (tab.kind !== "terminal") return tab;
-            try {
-              const state = await loadScrollback(
-                tab.activeLeafId,
-                tab.id,
-                tab.spaceId,
-              );
-              if (state) {
-                return { ...tab, restoredState: state };
-              }
-            } catch {
-              // Best-effort.
-            }
-            return tab;
-          }),
-        );
+        const restoreScrollback =
+          usePreferencesStore.getState().restoreTerminalScrollback;
+        const withRestored = restoreScrollback
+          ? await Promise.all(
+              restored.map(async (tab) => {
+                if (tab.kind !== "terminal") return tab;
+                try {
+                  const state = await loadScrollback(
+                    tab.activeLeafId,
+                    tab.id,
+                    tab.spaceId,
+                  );
+                  if (state) {
+                    return { ...tab, restoredState: state };
+                  }
+                } catch {
+                  // Best-effort.
+                }
+                return tab;
+              }),
+            )
+          : restored;
 
         const initialActiveIndex: Record<string, number> = {};
         for (const [id, st] of states)

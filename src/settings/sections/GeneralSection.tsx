@@ -20,6 +20,7 @@ import {
   setAutostart,
   setDefaultWorkspaceEnv,
   setExplorerGitDecorations,
+  setRestoreTerminalScrollback,
   setRestoreWindowState,
   setShowHidden,
   setTerminalCursorBlink,
@@ -76,6 +77,9 @@ export function GeneralSection() {
 
   const autostart = usePreferencesStore((s) => s.autostart);
   const restoreWindowState = usePreferencesStore((s) => s.restoreWindowState);
+  const restoreTerminalScrollback = usePreferencesStore(
+    (s) => s.restoreTerminalScrollback,
+  );
   const showHidden = usePreferencesStore((s) => s.showHidden);
   const explorerGitDecorations = usePreferencesStore(
     (s) => s.explorerGitDecorations,
@@ -444,6 +448,15 @@ export function GeneralSection() {
             <Switch
               checked={restoreWindowState}
               onCheckedChange={(v) => void setRestoreWindowState(v)}
+            />
+          </SettingRow>
+          <SettingRow
+            title="Restore terminal scrollback"
+            description="Restore previous terminal output and show a separator when reopening tabs."
+          >
+            <Switch
+              checked={restoreTerminalScrollback}
+              onCheckedChange={(v) => void setRestoreTerminalScrollback(v)}
             />
           </SettingRow>
         </div>

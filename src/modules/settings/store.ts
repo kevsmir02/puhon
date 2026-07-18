@@ -106,6 +106,7 @@ export type Preferences = {
   editorFontSize: number;
   autostart: boolean;
   restoreWindowState: boolean;
+  restoreTerminalScrollback: boolean;
   vimMode: boolean;
   editorWordWrap: boolean;
   showHidden: boolean;
@@ -154,6 +155,7 @@ const KEY_EDITOR_THEME = "editorTheme";
 const KEY_EDITOR_FONT_SIZE = "editorFontSize";
 const KEY_AUTOSTART = "autostart";
 const KEY_RESTORE_WINDOW = "restoreWindowState";
+const KEY_RESTORE_TERMINAL_SCROLLBACK = "restoreTerminalScrollback";
 const KEY_VIM_MODE = "vimMode";
 const KEY_EDITOR_WORD_WRAP = "editorWordWrap";
 const KEY_SHOW_HIDDEN = "showHidden";
@@ -211,6 +213,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   editorFontSize: EDITOR_FONT_SIZE_DEFAULT,
   autostart: false,
   restoreWindowState: true,
+  restoreTerminalScrollback: true,
   vimMode: false,
   editorWordWrap: false,
   showHidden: false,
@@ -282,6 +285,9 @@ export async function loadPreferences(): Promise<Preferences> {
     restoreWindowState:
       get<boolean>(KEY_RESTORE_WINDOW) ??
       DEFAULT_PREFERENCES.restoreWindowState,
+    restoreTerminalScrollback:
+      get<boolean>(KEY_RESTORE_TERMINAL_SCROLLBACK) ??
+      DEFAULT_PREFERENCES.restoreTerminalScrollback,
     vimMode: get<boolean>(KEY_VIM_MODE) ?? DEFAULT_PREFERENCES.vimMode,
     editorWordWrap:
       get<boolean>(KEY_EDITOR_WORD_WRAP) ?? DEFAULT_PREFERENCES.editorWordWrap,
@@ -410,6 +416,12 @@ export async function setAutostart(value: boolean): Promise<void> {
 
 export async function setRestoreWindowState(value: boolean): Promise<void> {
   await writePref(KEY_RESTORE_WINDOW, value);
+}
+
+export async function setRestoreTerminalScrollback(
+  value: boolean,
+): Promise<void> {
+  await writePref(KEY_RESTORE_TERMINAL_SCROLLBACK, value);
 }
 
 export async function setVimMode(value: boolean): Promise<void> {
@@ -564,6 +576,7 @@ export async function onPreferencesChange(
     [KEY_EDITOR_FONT_SIZE]: "editorFontSize",
     [KEY_AUTOSTART]: "autostart",
     [KEY_RESTORE_WINDOW]: "restoreWindowState",
+    [KEY_RESTORE_TERMINAL_SCROLLBACK]: "restoreTerminalScrollback",
     [KEY_VIM_MODE]: "vimMode",
     [KEY_EDITOR_WORD_WRAP]: "editorWordWrap",
     [KEY_SHOW_HIDDEN]: "showHidden",

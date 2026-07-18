@@ -899,7 +899,9 @@ export function useTerminalSession({
       // Restore scrollback from a previous session, then write a separator.
       // Guard: only restore once per leaf even if the effect re-runs.
       const state = restoredRef.current;
-      if (state && !restoredLeaves.has(leafId)) {
+      const restoreEnabled =
+        usePreferencesStore.getState().restoreTerminalScrollback;
+      if (state && restoreEnabled && !restoredLeaves.has(leafId)) {
         restoredLeaves.add(leafId);
         const slot = getSlotForLeaf(leafId);
         if (slot) {
