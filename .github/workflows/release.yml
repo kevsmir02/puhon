@@ -49,12 +49,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --bundles rpm
 
+      - name: Generate release notes
+        run: ./scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md
+
       - name: Create release and upload RPM
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RPM=$(ls src-tauri/target/release/bundle/rpm/*.rpm | head -n1)
-          gh release create "$GITHUB_REF_NAME" "$RPM" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release create "$GITHUB_REF_NAME" "$RPM" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
           if [ -f "$RPM.sig" ]; then
             gh release upload "$GITHUB_REF_NAME" "$RPM.sig" --clobber
           fi

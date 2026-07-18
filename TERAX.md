@@ -148,3 +148,4 @@ Long-form contributor guides live under `docs/`. These guides elaborate on `TERA
 - `docs/architecture/security-model.md` - consolidated security model and boundaries
 - `docs/architecture/terminal-renderer-pool.md` - renderer pool and DormantRing invariants
 - `docs/contributing/testing.md` - testing contract and core-subsystem invariants
+- `docs/release.md` - how to cut a release, trigger the workflow, and how the changelog is generated
