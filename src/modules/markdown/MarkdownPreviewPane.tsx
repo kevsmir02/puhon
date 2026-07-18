@@ -1,3 +1,4 @@
+import { mermaid } from "@streamdown/mermaid";
 import { MarkdownCode } from "./lib/markdown-code";
 import { cn } from "@/lib/utils";
 import { currentWorkspaceEnv } from "@/modules/workspace";
@@ -86,6 +87,7 @@ export function MarkdownPreviewPane({ path, visible, onSetView }: Props) {
             <Streamdown
               className="select-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
               components={components}
+              plugins={{ mermaid }}
               mode="static"
               parseIncompleteMarkdown={false}
             >

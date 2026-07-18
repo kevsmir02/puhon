@@ -87,6 +87,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => ({
 
 
           if (id.includes("/xterm/") || id.includes("@xterm/")) return "xterm";
+          if (id.includes("/mermaid/")) return "mermaid";
           // Lang packs and legacy modes are dynamically imported by
           // languageResolver; give each its own named chunk so they load on
           // demand instead of being glued into the codemirror core chunk.
