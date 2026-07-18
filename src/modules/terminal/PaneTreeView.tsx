@@ -21,6 +21,7 @@ type Props = {
   tabVisible: boolean;
   activeLeafId: number;
   blocks: boolean;
+  restoredState?: string;
   onFocusLeaf: (leafId: number) => void;
   getBundle: (leafId: number) => LeafBundle;
 };
@@ -28,7 +29,7 @@ type Props = {
 export function PaneTreeView(props: Props) {
   const { node } = props;
   if (node.kind === "leaf") {
-    const { tabVisible, activeLeafId, blocks, onFocusLeaf, getBundle } = props;
+    const { tabVisible, activeLeafId, blocks, restoredState, onFocusLeaf, getBundle } = props;
     const focused = node.id === activeLeafId;
     const b = getBundle(node.id);
     return (
@@ -50,6 +51,7 @@ export function PaneTreeView(props: Props) {
           focused={focused}
           initialCwd={node.cwd}
           blocks={blocks}
+          restoredState={node.id === activeLeafId ? restoredState : undefined}
           ref={b.setRef}
           onSearchReady={b.onSearchReady}
           onCwd={b.onCwd}

@@ -293,6 +293,7 @@ export function ptyIdForLeaf(leafId: number): number | null {
 }
 
 const lastSavedLengths = new Map<number, number>();
+const restoredLeaves = new Set<number>();
 
 export async function saveScrollback(
   leafId: number,
@@ -856,6 +857,8 @@ type Options = {
   onSearchReady?: (addon: SearchAddon) => void;
   onExit?: (code: number) => void;
   onCwd?: (cwd: string) => void;
+  /** Serialized xterm scrollback to restore on mount. */
+  restoredState?: string;
 };
 
 export function useTerminalSession({
@@ -868,6 +871,7 @@ export function useTerminalSession({
   onSearchReady,
   onExit,
   onCwd,
+  restoredState,
 }: Options) {
   const cbRef = useRef({ onSearchReady, onExit, onCwd });
   cbRef.current = { onSearchReady, onExit, onCwd };
@@ -877,6 +881,8 @@ export function useTerminalSession({
   // would detach/rebind the renderer slot (disposing block markers) on each cd.
   const initialCwdRef = useRef(initialCwd);
   initialCwdRef.current = initialCwd;
+  const restoredRef = useRef(restoredState);
+  restoredRef.current = restoredState;
 
   useEffect(() => {
     let cancelled = false;
@@ -890,6 +896,21 @@ export function useTerminalSession({
         onExit: (c) => cbRef.current.onExit?.(c),
         onCwd: (c) => cbRef.current.onCwd?.(c),
       });
+      // Restore scrollback from a previous session, then write a separator.
+      // Guard: only restore once per leaf even if the effect re-runs.
+      const state = restoredRef.current;
+      if (state && !restoredLeaves.has(leafId)) {
+        restoredLeaves.add(leafId);
+        const slot = getSlotForLeaf(leafId);
+        if (slot) {
+          try {
+            slot.term.write(state);
+            slot.term.write("\r\n\x1b[2m--- Restored session ---\x1b[0m\r\n");
+          } catch (e) {
+            console.warn("[terax] scrollback restore failed:", e);
+          }
+        }
+      }
       if (s.visibleNow && s.focusedNow && !s.blocks) focusSlot(leafId);
     });
     return () => {

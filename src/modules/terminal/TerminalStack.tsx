@@ -96,6 +96,7 @@ export function TerminalStack({
               tabVisible={tabVisible}
               activeLeafId={t.activeLeafId}
               blocks={t.blocks ?? false}
+              restoredState={t.restoredState}
               onFocusLeaf={(leafId) => onFocusLeaf(t.id, leafId)}
               getBundle={getBundle}
             />

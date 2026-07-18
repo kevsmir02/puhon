@@ -32,6 +32,8 @@ type Props = {
   initialCwd?: string;
   /** Enable command-block decorations (OSC 133) for this terminal. */
   blocks?: boolean;
+  /** Serialized xterm scrollback to restore on mount. */
+  restoredState?: string;
   onSearchReady?: (leafId: number, addon: SearchAddon) => void;
   onExit?: (leafId: number, code: number) => void;
   onCwd?: (leafId: number, cwd: string) => void;
@@ -45,6 +47,7 @@ export const TerminalPane = memo(
       focused = true,
       initialCwd,
       blocks = false,
+      restoredState,
       onSearchReady,
       onExit,
       onCwd,
@@ -62,6 +65,7 @@ export const TerminalPane = memo(
       focused,
       initialCwd,
       blocks,
+      restoredState,
       onSearchReady: (a) => onSearchReady?.(leafId, a),
       onExit: (c) => onExit?.(leafId, c),
       onCwd: (c) => onCwd?.(leafId, c),
