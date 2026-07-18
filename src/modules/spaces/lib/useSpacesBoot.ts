@@ -3,6 +3,7 @@ import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { Tab } from "@/modules/tabs";
 import { DEFAULT_SPACE_ID } from "@/modules/tabs/lib/useTabs";
 import { isLeaf, type PaneNode } from "@/modules/terminal/lib/panes";
+import { loadScrollback } from "@/modules/terminal/lib/useTerminalSession";
 import { parseWorkspaceScopeKey, type WorkspaceEnv } from "@/modules/workspace";
 import { useEffect, useRef } from "react";
 import { activeSpaceEnv, freshTabCwd } from "./activeSpace";
@@ -109,15 +110,35 @@ export function useSpacesBoot({
           uniqueCwds(restored).map((cwd) => native.workspaceAuthorize(cwd)),
         );
 
+        // Load scrollback for restored terminal tabs.
+        const withRestored = await Promise.all(
+          restored.map(async (tab) => {
+            if (tab.kind !== "terminal") return tab;
+            try {
+              const state = await loadScrollback(
+                tab.activeLeafId,
+                tab.id,
+                tab.spaceId,
+              );
+              if (state) {
+                return { ...tab, restoredState: state };
+              }
+            } catch {
+              // Best-effort.
+            }
+            return tab;
+          }),
+        );
+
         const initialActiveIndex: Record<string, number> = {};
         for (const [id, st] of states)
           initialActiveIndex[id] = st.activeTabIndex;
         useSpaces.getState().hydrate(spaces, active, initialActiveIndex);
 
-        const inActive = restored.filter((t) => t.spaceId === active);
+        const inActive = withRestored.filter((t) => t.spaceId === active);
         const idx = states.get(active)?.activeTabIndex ?? 0;
-        const activeTab = inActive[idx] ?? inActive[0] ?? restored[0];
-        replaceTabs(restored, activeTab.id);
+        const activeTab = inActive[idx] ?? inActive[0] ?? withRestored[0];
+        replaceTabs(withRestored, activeTab.id);
       } catch (e) {
         console.error("[terax] spaces boot failed:", e);
       } finally {

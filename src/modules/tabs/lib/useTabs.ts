@@ -38,6 +38,8 @@ export type TerminalTab = TabBase & {
   private?: boolean;
   /** User-set label that overrides the cwd-derived name. Survives cd. */
   customTitle?: string;
+  /** Serialized xterm scrollback restored from disk on boot. */
+  restoredState?: string;
 };
 
 export type EditorTab = TabBase & {
