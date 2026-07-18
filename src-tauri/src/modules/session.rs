@@ -175,14 +175,19 @@ mod tests {
     use super::*;
     use std::fs;
 
-    fn tmp_sessions_dir() -> PathBuf {
-        std::env::temp_dir().join("terax-session-tests")
+    fn unique_test_dir(label: &str) -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        std::env::temp_dir()
+            .join("terax-session-tests")
+            .join(format!("{label}-{nanos}"))
     }
 
     #[test]
     fn save_and_load_roundtrip() {
-        let dir = tmp_sessions_dir().join("test-space");
-        let _ = fs::remove_dir_all(&dir);
+        let dir = unique_test_dir("save-load");
         fs::create_dir_all(&dir).unwrap();
 
         let tp = dir.join("42-0.term");
@@ -190,7 +195,7 @@ mod tests {
 
         let data = "test-terminal-state";
         let meta = SessionMeta {
-            cwd: Some("/home/user".into()),
+            cwd: Some("/home/user".to_string()),
             cols: 120,
             rows: 40,
             saved_at: 1234567890,
@@ -208,13 +213,12 @@ mod tests {
         assert_eq!(loaded_meta.cols, 120);
         assert_eq!(loaded_meta.rows, 40);
 
-        let _ = fs::remove_dir_all(tmp_sessions_dir());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn delete_removes_files() {
-        let dir = tmp_sessions_dir().join("delete-test");
-        let _ = fs::remove_dir_all(&dir);
+        let dir = unique_test_dir("delete");
         fs::create_dir_all(&dir).unwrap();
 
         let tp = dir.join("1-0.term");
@@ -228,6 +232,6 @@ mod tests {
         assert!(!tp.exists());
         assert!(!mp.exists());
 
-        let _ = fs::remove_dir_all(tmp_sessions_dir());
+        let _ = fs::remove_dir_all(&dir);
     }
 }
