@@ -1,6 +1,6 @@
 pub mod modules;
 
-use modules::{fs, git, history, net, pty, secrets, shell, workspace};
+use modules::{fs, git, history, net, pty, secrets, session, shell, workspace};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -207,6 +207,7 @@ pub fn run() {
         .manage(pty::PtyState::default())
         .manage(shell::ShellState::default())
         .manage(secrets::SecretsState::default())
+        .manage(session::SessionState)
         .manage(fs::watch::FsWatchState::default())
         .manage(history::HistoryState::default())
         .manage(fs::grep::ContentSearchState::default())
@@ -243,6 +244,10 @@ pub fn run() {
             fs::mutate::fs_copy,
             fs::watch::fs_watch_add,
             fs::watch::fs_watch_remove,
+            session::session_save,
+            session::session_load,
+            session::session_delete,
+            session::session_delete_space,
             fs::search::fs_search,
             fs::search::fs_list_files,
             fs::grep::fs_grep,
