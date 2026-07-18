@@ -1,4 +1,5 @@
 import { ensureMonoFontsLoaded } from "@/lib/fonts";
+import { sessionLoad, sessionSave } from "@/lib/native";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { invoke } from "@tauri-apps/api/core";
 import type { SearchAddon } from "@xterm/addon-search";
@@ -289,6 +290,48 @@ export function leafIdForPty(ptyId: number): number | null {
 
 export function ptyIdForLeaf(leafId: number): number | null {
   return sessions.get(leafId)?.pty?.id ?? null;
+}
+
+const lastSavedLengths = new Map<number, number>();
+
+export async function saveScrollback(
+  leafId: number,
+  tabId: number,
+  spaceId: string,
+): Promise<void> {
+  const slot = getSlotForLeaf(leafId);
+  if (!slot) return;
+
+  const len = slot.term.buffer.active.length;
+  if (len < 2) return;
+
+  const prev = lastSavedLengths.get(leafId);
+  if (prev === len) return;
+  lastSavedLengths.set(leafId, len);
+
+  try {
+    const serialized = slot.serializeAddon.serialize({ scrollback: 5000 });
+    const cwd = sessions.get(leafId)?.lastCwd ?? null;
+    const cols = slot.term.cols;
+    const rows = slot.term.rows;
+    await sessionSave(spaceId, tabId, leafId, serialized, cwd, cols, rows);
+  } catch {
+    // Best-effort persistence.
+  }
+}
+
+export async function loadScrollback(
+  leafId: number,
+  tabId: number,
+  spaceId: string,
+): Promise<string | null> {
+  try {
+    const result = await sessionLoad(spaceId, tabId, leafId);
+    if (!result?.data) return null;
+    return result.data;
+  } catch {
+    return null;
+  }
 }
 
 function leafBusy(s: Session): boolean {
