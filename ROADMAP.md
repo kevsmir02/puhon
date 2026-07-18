@@ -94,17 +94,6 @@ The themes below frame every scope decision.
 - [ ] Bundle optimization (lazy-load language packs, individual UI primitive imports, tree-shake)
 - [ ] Selective TS → Rust migration where the profiler shows measurable wins
 
-## Wanted contributions
-
-Strategic areas where help is welcome. Pick something and propose an approach in Discord or via an issue first.
-
-- **Test coverage.** PTY edge cases across platforms, security functions, tool guards.
-- **Bundle optimization.** Profile and propose specific dependency replacements or tree-shake fixes.
-- **Platform-specific bugs.** Rendering issues on niche distros, shell quirks, WSL edge cases.
-- **Documentation and translations.** Improvements, screenshots, examples, non-English README sections.
-- **Themes.** Terminal and editor themes, UI accent palettes that fit the lightweight aesthetic.
-See `good-first-issue` and `help-wanted` labels on GitHub Issues for concrete tasks.
-
 ## Out of scope
 
 Categories that will not be built into Terax. Individual feature requests in these categories will be closed.
@@ -116,11 +105,3 @@ Categories that will not be built into Terax. Individual feature requests in the
 - **Telemetry, analytics, accounts.** Terax stays BYOK and offline-respectful.
 - **Extension marketplaces at IDE scale.** Arbitrary UI or behavior extensions will not.
 - **Third-party subscription session bridges.** Forwarding cloud subscription auth (provider-managed login sessions) through Terax is not technically feasible for third-party clients.
-
-## Decision authority
-
-Direction and scope decisions are made by [@crynta](https://github.com/crynta). Trusted reviewers (informal, no fixed roles yet) provide input on security, performance, and platform-specific areas.
-
-If a PR is closed and you disagree, raise it in Discord. Happy to discuss, not happy to be ambushed in a PR comment thread.
-
-This will likely formalize over time as the project grows.
