@@ -15,13 +15,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(path.join(here, "MediaLightbox.tsx"), "utf8");
 
 // Extract the lightbox overlay dialog div (the second <div> inside the {lightbox && } block)
-const dialogMatch = src.match(/role="dialog"[\s\S]*?className="[^"]*fixed[^"]*"/);
+const dialogMatch = src.match(
+  /role="dialog"[\s\S]*?className="[^"]*fixed[^"]*"/,
+);
 const dialogJsx = dialogMatch?.[0] ?? "";
 
 // Extract the thumbnail image (the one with loading="lazy")
-const thumbMatch = src.match(
-  /<img[\s\S]*?loading="lazy"[\s\S]*?\/>/,
-);
+const thumbMatch = src.match(/<img[\s\S]*?loading="lazy"[\s\S]*?\/>/);
 const thumbJsx = (thumbMatch?.[0] ?? "")
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/\/\/[^\n]*/g, "");

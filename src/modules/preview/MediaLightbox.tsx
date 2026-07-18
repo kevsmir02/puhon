@@ -55,7 +55,10 @@ export function MediaLightbox({ src, alt, className }: Props) {
   const onWheel = useCallback((e: ReactWheelEvent) => {
     e.preventDefault();
     setZoom((z) =>
-      Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP))),
+      Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)),
+      ),
     );
   }, []);
 
@@ -119,17 +122,11 @@ export function MediaLightbox({ src, alt, className }: Props) {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() =>
-                setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP))
-              }
+              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP))}
               title="Zoom in"
               className="size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <HugeiconsIcon
-                icon={ZoomIn}
-                size={14}
-                strokeWidth={1.75}
-              />
+              <HugeiconsIcon icon={ZoomIn} size={14} strokeWidth={1.75} />
             </Button>
             <span className="min-w-[3.5em] text-center text-[11px] tabular-nums text-muted-foreground">
               {Math.round(zoom * 100)}%
@@ -138,17 +135,11 @@ export function MediaLightbox({ src, alt, className }: Props) {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() =>
-                setZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP))
-              }
+              onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP))}
               title="Zoom out"
               className="size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <HugeiconsIcon
-                icon={ZoomOut}
-                size={14}
-                strokeWidth={1.75}
-              />
+              <HugeiconsIcon icon={ZoomOut} size={14} strokeWidth={1.75} />
             </Button>
             <div className="mx-0.5 h-4 w-px bg-border/60" />
             <Button
@@ -156,9 +147,7 @@ export function MediaLightbox({ src, alt, className }: Props) {
               variant="ghost"
               size="icon"
               onClick={() =>
-                containerRef.current
-                  ?.requestFullscreen?.()
-                  .catch(() => {})
+                containerRef.current?.requestFullscreen?.().catch(() => {})
               }
               title="Fullscreen"
               className="size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -180,11 +169,7 @@ export function MediaLightbox({ src, alt, className }: Props) {
               title="Close"
               className="size-7 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              <HugeiconsIcon
-                icon={Cancel01Icon}
-                size={14}
-                strokeWidth={1.75}
-              />
+              <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={1.75} />
             </Button>
           </div>
 
