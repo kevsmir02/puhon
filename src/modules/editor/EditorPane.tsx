@@ -15,6 +15,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { MediaLightbox } from "@/modules/preview/MediaLightbox";
 import {
   forwardRef,
   memo,
@@ -386,17 +387,10 @@ export const EditorPane = memo(
         return (
           <div className="flex h-full min-h-0 flex-col items-center justify-center bg-background p-4 overflow-auto">
             {isImage && (
-              <img
+              <MediaLightbox
                 src={assetUrl}
-                loading="lazy"
-                decoding="async"
-                className="max-w-full max-h-full object-contain rounded-md border border-border shadow-sm"
-                style={{
-                  backgroundImage:
-                    "conic-gradient(var(--muted) 0.25turn, transparent 0.25turn 0.5turn, var(--muted) 0.5turn 0.75turn, transparent 0.75turn)",
-                  backgroundSize: "20px 20px",
-                }}
                 alt={path.split("/").pop()}
+                className="max-w-full max-h-full object-contain rounded-md border border-border shadow-sm"
               />
             )}
             {isVideo && (
