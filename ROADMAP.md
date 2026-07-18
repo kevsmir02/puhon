@@ -6,7 +6,7 @@ This file is updated as direction evolves. For day-to-day work, see [GitHub Issu
 
 ## What Terax is
 
-Terax is a fast, lightweight, terminal-native IDE. It pairs a native PTY backend with a modern UI: multi-tab terminals, an integrated code editor, a file explorer, and source control. Under 10 MB on disk. No telemetry. Keys stored in the OS keychain.
+Terax is a fast, lightweight, terminal-native IDE. It pairs a native PTY backend with a modern UI: multi-tab terminals, an integrated code editor, a file explorer, and source control. Under 8 MB on disk. No telemetry.
 
 The product is opinionated: terminal-first, lightweight always, cross-platform without compromise.
 
@@ -24,7 +24,7 @@ The themes below frame every scope decision.
 1. **Lightweight always.** 7-8 MB binary. Every dependency justified. Per-tab memory budget enforced.
 2. **Terminal-first.** xterm.js correctness, PTY fidelity, TUI app compatibility are non-negotiable.
 3. **Cross-platform parity.** macOS, Linux, Windows, WSL. No platform-specific exclusives.
-4. **Security by default.** Path guards, SSRF protection, OSC trust, IPC sandboxing. Defaults safe out of the box.
+4. **Security by default.** Path guards, OSC trust, IPC sandboxing. Defaults safe out of the box.
 
 ## Shipped
 
@@ -73,7 +73,6 @@ The themes below frame every scope decision.
 
 ### Security
 
-- [x] SSRF and DNS rebinding defenses on outbound HTTP
 - [x] Trust gating in terminal escape-sequence handling
 - [x] Sandboxed preview surface
 
