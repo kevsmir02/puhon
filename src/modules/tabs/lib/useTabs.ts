@@ -14,7 +14,10 @@ import {
   splitLeaf,
   swapLeafInDirection,
 } from "@/modules/terminal/lib/panes";
-import { disposeSession, saveScrollback } from "@/modules/terminal/lib/useTerminalSession";
+import {
+  disposeSession,
+  saveScrollback,
+} from "@/modules/terminal/lib/useTerminalSession";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Matches the renderer slot pool size — over this we'd evict an active leaf.

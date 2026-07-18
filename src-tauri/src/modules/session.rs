@@ -65,7 +65,10 @@ fn prune(space_id: &str) {
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
     });
 
-    for entry in term_files.iter().take(term_files.len() - MAX_SESSIONS_PER_SPACE) {
+    for entry in term_files
+        .iter()
+        .take(term_files.len() - MAX_SESSIONS_PER_SPACE)
+    {
         let _ = fs::remove_file(entry.path());
     }
 }
@@ -94,8 +97,7 @@ pub fn session_save(
     };
 
     // Write .term file atomically
-    let mut tmp =
-        NamedTempFile::new_in(&dir).map_err(|e| format!("tempfile: {e}"))?;
+    let mut tmp = NamedTempFile::new_in(&dir).map_err(|e| format!("tempfile: {e}"))?;
     tmp.write_all(data.as_bytes())
         .map_err(|e| format!("write: {e}"))?;
     tmp.persist(term_path(&space_id, tab_id, leaf_id))
@@ -103,8 +105,7 @@ pub fn session_save(
 
     // Write .meta file atomically
     let meta_json = serde_json::to_string(&meta).map_err(|e| format!("json: {e}"))?;
-    let mut tmp_meta =
-        NamedTempFile::new_in(&dir).map_err(|e| format!("tempfile: {e}"))?;
+    let mut tmp_meta = NamedTempFile::new_in(&dir).map_err(|e| format!("tempfile: {e}"))?;
     tmp_meta
         .write_all(meta_json.as_bytes())
         .map_err(|e| format!("write: {e}"))?;
@@ -149,11 +150,7 @@ pub fn session_load(
 }
 
 #[tauri::command]
-pub fn session_delete(
-    space_id: String,
-    tab_id: u32,
-    leaf_id: u32,
-) -> Result<(), String> {
+pub fn session_delete(space_id: String, tab_id: u32, leaf_id: u32) -> Result<(), String> {
     let tp = term_path(&space_id, tab_id, leaf_id);
     let mp = meta_path(&space_id, tab_id, leaf_id);
     let _ = fs::remove_file(&tp);

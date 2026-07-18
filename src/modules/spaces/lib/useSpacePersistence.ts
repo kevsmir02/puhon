@@ -118,14 +118,17 @@ export function useSpacePersistence({
   }, [enabled, flush]);
 
   // App close / blur: flush tab layout AND save scrollback for all terminals.
-  const flushAll = useCallback((snap: Snapshot) => {
-    flush(snap);
-    for (const t of snap.tabs) {
-      if (t.kind === "terminal") {
-        for (const lid of leafIds(t.paneTree)) {
-          void saveScrollback(lid, t.id, t.spaceId);
+  const flushAll = useCallback(
+    (snap: Snapshot) => {
+      flush(snap);
+      for (const t of snap.tabs) {
+        if (t.kind === "terminal") {
+          for (const lid of leafIds(t.paneTree)) {
+            void saveScrollback(lid, t.id, t.spaceId);
+          }
         }
       }
-    }
-  }, [flush]);
+    },
+    [flush],
+  );
 }

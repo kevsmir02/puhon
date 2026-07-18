@@ -29,7 +29,14 @@ type Props = {
 export function PaneTreeView(props: Props) {
   const { node } = props;
   if (node.kind === "leaf") {
-    const { tabVisible, activeLeafId, blocks, restoredState, onFocusLeaf, getBundle } = props;
+    const {
+      tabVisible,
+      activeLeafId,
+      blocks,
+      restoredState,
+      onFocusLeaf,
+      getBundle,
+    } = props;
     const focused = node.id === activeLeafId;
     const b = getBundle(node.id);
     return (
