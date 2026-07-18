@@ -70,6 +70,7 @@ The themes below frame every scope decision.
 - [x] No telemetry
 - [x] Live filesystem updates in explorer and editor
 - [x] Tab/pane layout restore across app restarts
+- [x] Persistent terminal scrollback across restarts
 
 ### Security
 
@@ -84,7 +85,6 @@ The themes below frame every scope decision.
 - [ ] Inline terminal auto-suggestions (history-based)
 - [ ] Themes and customizations (terminal themes, UI accents, keybindings, layout)
 - [ ] Drag and drop in terminal (files as quoted paths)
-- [ ] Persistent terminal scrollback across restarts
 - [ ] Preview surface expansion (better image / Markdown handling)
 - [ ] Test coverage expansion (PTY edge cases, security functions)
 
