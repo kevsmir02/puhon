@@ -14,7 +14,7 @@ import {
   splitLeaf,
   swapLeafInDirection,
 } from "@/modules/terminal/lib/panes";
-import { disposeSession } from "@/modules/terminal/lib/useTerminalSession";
+import { disposeSession, saveScrollback } from "@/modules/terminal/lib/useTerminalSession";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Matches the renderer slot pool size — over this we'd evict an active leaf.
@@ -254,6 +254,7 @@ export function useTabs(initial?: Partial<TerminalTab>) {
   const activeSpaceIdRef = useRef(DEFAULT_SPACE_ID);
   const tabsRef = useRef(tabs);
   const activeIdRef = useRef(activeId);
+  const prevActiveTabRef = useRef<Tab | undefined>(undefined);
 
   useEffect(() => {
     tabsRef.current = tabs;
@@ -262,6 +263,17 @@ export function useTabs(initial?: Partial<TerminalTab>) {
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+
+  // Save scrollback when switching away from a terminal tab.
+  useEffect(() => {
+    const prev = prevActiveTabRef.current;
+    if (prev?.kind === "terminal") {
+      for (const lid of leafIds(prev.paneTree)) {
+        void saveScrollback(lid, prev.id, prev.spaceId);
+      }
+    }
+    prevActiveTabRef.current = tabs.find((t) => t.id === activeId);
+  }, [activeId, tabs]);
 
   // Activating a cold tab warms it: one choke point for every activation path.
   useEffect(() => {
@@ -792,17 +804,25 @@ export function useTabs(initial?: Partial<TerminalTab>) {
 
   const closeTab = useCallback((id: number) => {
     let toDispose: number[] = [];
+    let closingTab: TerminalTab | undefined;
     setTabs((curr) => {
       const fallback = nextActiveInSpace(curr, id);
       if (fallback === null) return curr;
       const target = curr.find((t) => t.id === id);
       if (target?.kind === "terminal") {
         toDispose = leafIds(target.paneTree);
+        closingTab = target as TerminalTab;
       }
       const next = curr.filter((t) => t.id !== id);
       setActiveId((active) => (id === active ? fallback : active));
       return next;
     });
+    // Save scrollback before disposing so the PTY is still alive.
+    if (closingTab) {
+      for (const lid of toDispose) {
+        void saveScrollback(lid, closingTab.id, closingTab.spaceId);
+      }
+    }
     for (const lid of toDispose) disposeSession(lid);
   }, []);
 

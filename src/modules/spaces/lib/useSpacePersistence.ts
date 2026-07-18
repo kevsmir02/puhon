@@ -1,3 +1,5 @@
+import { saveScrollback } from "@/modules/terminal/lib/useTerminalSession";
+import { leafIds } from "@/modules/terminal/lib/panes";
 import { useCallback, useEffect, useRef } from "react";
 import type { Tab } from "@/modules/tabs";
 import { isSerializableTab, serializeTabs } from "./serialize";
@@ -83,12 +85,27 @@ export function useSpacePersistence({
     };
   }, [tabs, activeId, activeSpaceId, enabled, flush]);
 
+  // Periodic save: every 30s save scrollback for the active terminal tab.
+  useEffect(() => {
+    if (!enabled) return;
+    const interval = setInterval(() => {
+      const { tabs: snap, activeId: id } = latest.current;
+      const active = snap.find((t) => t.id === id);
+      if (active?.kind === "terminal") {
+        for (const lid of leafIds(active.paneTree)) {
+          void saveScrollback(lid, active.id, active.spaceId);
+        }
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) return;
     const onHidden = () => {
-      if (document.visibilityState === "hidden") flush(latest.current);
+      if (document.visibilityState === "hidden") flushAll(latest.current);
     };
-    const onLeave = () => flush(latest.current);
+    const onLeave = () => flushAll(latest.current);
     document.addEventListener("visibilitychange", onHidden);
     window.addEventListener("blur", onLeave);
     window.addEventListener("beforeunload", onLeave);
@@ -99,4 +116,16 @@ export function useSpacePersistence({
       flush(latest.current);
     };
   }, [enabled, flush]);
+
+  // App close / blur: flush tab layout AND save scrollback for all terminals.
+  const flushAll = useCallback((snap: Snapshot) => {
+    flush(snap);
+    for (const t of snap.tabs) {
+      if (t.kind === "terminal") {
+        for (const lid of leafIds(t.paneTree)) {
+          void saveScrollback(lid, t.id, t.spaceId);
+        }
+      }
+    }
+  }, [flush]);
 }
