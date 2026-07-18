@@ -1,112 +1,68 @@
 <div align="center">
-  <img src="public/logo.png" width="144" height="144" alt="Terax" />
+  <img src="public/logo.png" width="96" height="96" alt="Terax" />
   <h1>Terax</h1>
 
-  <p><strong>Lightweight terminal-first dev workspace.</strong></p>
-
-  <p>
-    <img src="https://img.shields.io/github/v/release/crynta/terax-ai?label=version&color=blue" alt="version" />
-    <img src="https://img.shields.io/github/downloads/crynta/terax-ai/total?label=downloads&color=blue" alt="downloads" />
-    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey" alt="platform" />
-    <a href="https://discord.gg/tyveTUyEp7"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
-  </p>
-
-  <p>
-    <a href="https://terax.app">Website</a>
-    ·
-    <a href="https://terax.app/docs">Docs</a>
-    ·
-    <a href="https://github.com/crynta/Terax-website">Website's source code</a>
-  </p>
+  <p><strong>Terminal-first dev workspace.</strong></p>
 </div>
 
 ---
 
-Terax is a lightweight open-source terminal workspace built on Tauri 2 + Rust and React 19. A native PTY backend with a WebGL renderer, plus a code editor, file explorer, source control with a git graph, and a web preview pane built in. About 7-8 MB on disk. No telemetry. No account.
-
-> **This is a fork of [Terax](https://github.com/crynta/terax-ai) with all AI and LSP features stripped out.** The original Terax includes an agentic AI side-panel, inline autocomplete, multi-provider model support, sub-agents, and LSP-based code intelligence. This fork keeps the terminal, editor, file explorer, source control, themes, and everything else — just without the AI.
-
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center"><img src="docs/terminal.png" alt="Terminal" /><br/><sub>Multi-tab terminal with WebGL rendering</sub></td>
-    <td align="center"><img src="docs/themes.png" alt="Themes and background image" /><br/><sub>Custom themes, presets, and background images</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/web-preview.png" alt="Web preview" /><br/><sub>Web preview of local dev servers</sub></td>
-    <td align="center"><img src="docs/source-control.png" alt="Source control and git graph" /><br/><sub>Source control panel with git graph in history</sub></td>
-  </tr>
-
-</table>
+Lightweight terminal workspace built on Tauri 2 + Rust and React 19. Native PTY backend with WebGL renderer, plus a code editor, file explorer, and source control with git graph. No telemetry, no accounts, no bloat.
 
 ## Features
 
 ### Terminal
 
 - xterm.js with WebGL renderer, multi-tab with background streaming
-- GPU-accelerated block-based terminal with editor-like command input
 - Native PTY backend via `portable-pty` (zsh, bash, pwsh, fish, cmd)
 - Split panels (horizontal and vertical)
+- Block-based command input with shell integration (OSC 133)
 - Inline search, link detection, true-color
-- Per-tab workspace environments on Windows (Local, or any installed WSL distro)
+- WSL workspace support on Windows
 
-### Code editor
+### Editor
 
-- CodeMirror 6 (supports all popular languages - TS/JS, Rust, Python, Go, C/C++, Java, HTML/CSS, JSON, Markdown, etc.)
+- CodeMirror 6 with syntax highlighting for TS/JS, Rust, Python, Go, C/C++, Java, HTML/CSS, JSON, Markdown, and more
 - Vim mode
-- External formatter support (prettier, biome, ruff, rustfmt, gofmt, clang-format, shfmt, zigfmt)
-- Ten built-in editor themes: Atom One, Aura, Copilot, GitHub Dark / Light, Gruvbox Dark, Nord, Tokyo Night, Xcode Dark / Light
+- External formatter support (prettier, biome, ruff, rustfmt, gofmt, clang-format, shfmt, zig fmt)
+- Built-in editor themes
 
-### Source control
+### Source Control
 
-- Stage / unstage hunks, commit (Cmd+Enter / Ctrl+Enter), push with upstream awareness
-- Branch display including detached HEAD state
-- Git history pane with a real commit graph (lane rendering for merges and branches)
-- Commit search and filter, click through to the remote commit page
+- Stage / unstage hunks, commit, push
+- Git history panel with commit graph
+- Commit search and per-file diffs
 
-### File explorer
+### File Explorer
 
-- Catppuccin icon theme
+- File tree with icon theme
 - Fuzzy search, keyboard navigation, inline rename, context actions
 
-### Web preview
+### Themes
 
-- Auto-detects local dev servers and opens them in a preview tab
-- External URL preview via a native child webview
-
-### Themes and customization
-
-- Custom themes built in-app, switch between bundled presets and your own
-- Create your own themes, share them or import from the community
+- Built-in preset themes (kanagawa, catppuccin, tokyo-night, nord, gruvbox, dracula, everforest, rose-pine, solarized, and more)
+- Custom theme builder
 - Background images with adjustable opacity and blur
-- Editor theme is independent from the app theme
+- Editor theme independent from app theme
 
 ## Install
 
-Latest installers are on the [Releases](https://github.com/crynta/terax-ai/releases/latest) page. Terax auto-updates from there.
+Download from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
 
-### Windows notes
+### Windows
 
-- On first launch Windows shows "Windows protected your PC" because Terax isn't code-signed yet. Click **More info** then **Run anyway**.
-- Default shell detection: `pwsh.exe` (PowerShell 7+) -> `powershell.exe` (Windows PowerShell 5.1) -> `cmd.exe`.
-- WSL is a first-class workspace environment, not a wrapped subprocess.
+- On first launch Windows may show "Windows protected your PC" — click **More info** then **Run anyway**.
+- Default shell: `pwsh.exe` → `powershell.exe` → `cmd.exe`.
 
-### Linux notes
+### Linux
 
-- **Arch / AUR:** `yay -S terax-bin` (or `paru`, etc.). Tracks the latest release.
-- **NixOS / Nix**: use the official flake - `nix profile install github:crynta/terax-ai` (non-NixOS), or import the flake and add `inputs.terax.packages.${pkgs.system}.terax` to `environment.systemPackages` (NixOS). The `nixosModules.terax` output is also available for a simpler setup.
-- **AppImage:** needs FUSE. Without it: `./Terax_*.AppImage --appimage-extract-and-run`. On Wayland with rendering glitches, try `WEBKIT_DISABLE_DMABUF_RENDERER=1`. Otherwise the `.deb` / `.rpm` packages link against the system GTK stack and tend to be smoother.
+- **Arch / AUR:** `yay -S terax-bin`
+- **Nix:** `nix profile install github:crynta/terax-ai`
+- **AppImage:** needs FUSE. Without it: `./Terax_*.AppImage --appimage-extract-and-run`. On Wayland with rendering issues, try `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
 
 ## Build from source
 
-**Prerequisites**
-
-- Rust (stable), <https://rustup.rs>
-- Node 20+ and [pnpm](https://pnpm.io)
-- Tauri prerequisites for your platform, <https://tauri.app/start/prerequisites/>
-
-**Run**
+**Prerequisites:** Rust (stable), Node 20+, pnpm, [Tauri prerequisites](https://tauri.app/start/prerequisites/)
 
 ```bash
 pnpm install
@@ -114,36 +70,14 @@ pnpm tauri dev          # development
 pnpm tauri build        # production bundle
 ```
 
-**Checks**
+**Checks:**
 
 ```bash
-pnpm lint
-pnpm check-types
-pnpm test
-cd src-tauri && cargo clippy --all-targets --locked -- -D warnings   # Rust lint (matches CI)
-cd src-tauri && cargo nextest run --locked                           # or: cargo test --locked
+pnpm lint && pnpm check-types && pnpm test
+cd src-tauri && cargo clippy --all-targets --locked -- -D warnings
+cd src-tauri && cargo test --locked
 ```
-
-## Tech stack
-
-Tauri 2, Rust, `portable-pty`, React 19, TypeScript, Vite, xterm.js, CodeMirror 6, Tailwind v4, shadcn/ui, Zustand.
-
-## Contributing
-
-Issues and PRs are welcome! Feel free to open issues, suggest features, or submit pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [architecture docs](docs/README.md) for more details.
 
 ## License
 
-Terax is licensed under the Apache-2.0 License. For more information on our dependencies, see [Apache License 2.0](LICENSE).
-
-## Star history
-
-<div align="center">
-  <a href="https://www.star-history.com/#crynta/terax-ai&Date">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=crynta/terax-ai&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=crynta/terax-ai&type=Date" />
-      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=crynta/terax-ai&type=Date" />
-    </picture>
-  </a>
-</div>
+Apache 2.0 — see [LICENSE](LICENSE).
