@@ -1,6 +1,6 @@
 [package]
 name = "puhon"
-version = "0.8.9"
+version = "0.9.0"
 description = "Lightweight terminal workspace for hosting coding-agent CLIs"
 authors = ["kevsmir02"]
 license = "Apache-2.0"

@@ -24,7 +24,7 @@ jobs:
             asset_arch: aarch64
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install Linux build dependencies
         run: |
@@ -37,9 +37,9 @@ jobs:
             patchelf \
             rpm
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
@@ -73,7 +73,7 @@ jobs:
 
       # Strip bundled libwayland-* so recent Mesa (Fedora 43 / Arch / Bazzite)
       # loads host copies; re-sign and re-upload the AppImage. Ported verbatim
-      # from upstream kevsmir02/puhon, parameterized for arch.
+      # from upstream crynta/terax-ai, parameterized for arch.
       - name: Fix AppImage wayland libs and re-sign
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -119,12 +119,16 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           gh release download "$TAG" --pattern "latest.json" --clobber
-          for SUFFIX in amd64 aarch64; do
+          for SUFFIX in amd64 x86_64 aarch64; do
             gh release download "$TAG" --pattern "*_${SUFFIX}.AppImage.sig" --clobber || true
             SIG_FILE=$(ls ./*_${SUFFIX}.AppImage.sig 2>/dev/null | head -n1 || true)
             [ -n "$SIG_FILE" ] || continue
             NEW_SIG=$(cat "$SIG_FILE")
-            KEY="linux-${SUFFIX/amd64/x86_64}"
+            if [ "$SUFFIX" = "amd64" ] || [ "$SUFFIX" = "x86_64" ]; then
+              KEY="linux-x86_64"
+            else
+              KEY="linux-aarch64"
+            fi
             jq -e --arg key "$KEY" 'has("platforms") and (.platforms | has($key))' latest.json >/dev/null \
               || { echo "latest.json missing platforms.$KEY"; exit 1; }
             jq --arg sig "$NEW_SIG" --arg key "$KEY" \

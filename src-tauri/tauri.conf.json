@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Puhon",
-  "version": "0.8.9",
+  "version": "0.9.0",
   "identifier": "app.kevsmir02.puhon",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -106,7 +106,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwQ0M5QjRBRjAwQzc4QkUKUldTK2VBendTcHZNY0FweHNsZ1Z6cHBweGo3U2hXdHl6dmdDRll2Vzg1cWRZYS90Z2VKU3g1MVkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3QTUwODA2OTMyQzVFQkIKUldTN1hpeVRCZ2lsVjNYcE0rL2FtbWR5eTYxWVF5TnNVcCtFaVcrWlpEaHhjOS9ZZGJzNVpBVzYK",
       "endpoints": [
         "https://github.com/kevsmir02/puhon/releases/latest/download/latest.json"
       ]

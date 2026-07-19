@@ -28,47 +28,51 @@ REPO="kevsmir02/puhon"
 PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
 
 if [ -n "$PREV_TAG" ]; then
-  RANGE="${PREV_TAG}..${TAG}"
+	RANGE="${PREV_TAG}..${TAG}"
 else
-  RANGE="${TAG}"
+	RANGE="${TAG}"
 fi
 
 feats=()
 changes=()
 
 while IFS= read -r subj; do
-  [ -z "$subj" ] && continue
-  # Strip conventional prefix: "feat(scope): msg" / "feat: msg" -> "msg"
-  stripped="$(printf '%s' "$subj" | sed -E 's/^[a-z]+(\([^)]+\))?: //')"
-  case "$subj" in
-    feat:*|feat\(*\):*)
-      feats+=("$stripped") ;;
-    fix:*|fix\(*\):*|perf:*|perf\(*\):*|refactor:*|refactor\(*\):*|revert:*|revert\(*\):*)
-      changes+=("$stripped") ;;
-    docs:*|docs\(*\):*|style:*|chore:*|chore\(*\):*|ci:*|build:*|test:*|test\(*\):*)
-      ;; # noise - skip
-    *)
-      changes+=("$subj") ;;
-  esac
+	[ -z "$subj" ] && continue
+	# Strip conventional prefix: "feat(scope): msg" / "feat: msg" -> "msg"
+	stripped="$(printf '%s' "$subj" | sed -E 's/^[a-z]+(\([^)]+\))?: //')"
+	case "$subj" in
+	feat:* | feat\(*\):*)
+		feats+=("$stripped")
+		;;
+	fix:* | fix\(*\):* | perf:* | perf\(*\):* | refactor:* | refactor\(*\):* | revert:* | revert\(*\):*)
+		changes+=("$stripped")
+		;;
+	docs:* | docs\(*\):* | style:* | chore:* | chore\(*\):* | ci:* | build:* | test:* | test\(*\):*)
+		;; # noise - skip
+	*)
+		changes+=("$subj")
+		;;
+	esac
 done < <(git log "$RANGE" --pretty=format:"%s" --no-merges)
 
 emit() {
-  local title="$1"; shift
-  [ "$#" -eq 0 ] && return
-  printf '## %s\n\n' "$title"
-  local line
-  for line in "$@"; do
-    printf -- '- %s\n' "$line"
-  done
-  printf '\n'
+	local title="$1"
+	shift
+	[ "$#" -eq 0 ] && return
+	printf '## %s\n\n' "$title"
+	local line
+	for line in "$@"; do
+		printf -- '- %s\n' "$line"
+	done
+	printf '\n'
 }
 
 {
-  emit "What's new" "${feats[@]}"
-  emit "Changes" "${changes[@]}"
+	emit "What's new" "${feats[@]}"
+	emit "Changes" "${changes[@]}"
 
-  if [ -n "$PREV_TAG" ]; then
-    printf '**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
-      "$REPO" "$PREV_TAG" "$TAG"
-  fi
+	if [ -n "$PREV_TAG" ]; then
+		printf '**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
+			"$REPO" "$PREV_TAG" "$TAG"
+	fi
 }

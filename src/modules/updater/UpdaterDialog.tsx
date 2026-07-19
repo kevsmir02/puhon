@@ -108,8 +108,8 @@ export function UpdaterDialog() {
 
         {pkg && (
           <p className="mt-2 text-sm text-muted-foreground">
-            Puhon v{pkg.version} is available (you are on v{pkg.currentVersion}).
-            Installing will ask for your password.
+            Puhon v{pkg.version} is available (you are on v{pkg.currentVersion}
+            ). Installing will ask for your password.
           </p>
         )}
 

@@ -121,24 +121,18 @@ export function useUpdater({ autoCheck = true }: HookOptions = {}) {
       if (detect.isAppimage) {
         const update = await check();
         setStatus(
-          update
-            ? { kind: "available", update }
-            : { kind: "uptodate" },
+          update ? { kind: "available", update } : { kind: "uptodate" },
         );
-        if (!update)
-          localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+        if (!update) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
         return;
       }
       const pm = detect.packageManager;
       if (pm) {
         const info = await fetchPkgInfo(pm, await getVersion());
         setStatus(
-          info
-            ? { kind: "pkg-available", info }
-            : { kind: "uptodate" },
+          info ? { kind: "pkg-available", info } : { kind: "uptodate" },
         );
-        if (!info)
-          localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+        if (!info) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
         return;
       }
       setStatus({
