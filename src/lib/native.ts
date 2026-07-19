@@ -432,3 +432,38 @@ export async function sessionDelete(
 ): Promise<void> {
   await invoke("session_delete", { spaceId, tabId, leafId });
 }
+
+// ---- linux updater ----
+
+export type PackageManager = "dnf" | "apt";
+
+export type DetectResult = {
+  isAppimage: boolean;
+  packageManager: PackageManager | null;
+};
+
+export type DownloadEvent =
+  | { event: "started"; contentLength: number | null }
+  | { event: "progress"; downloaded: number; total: number | null }
+  | { event: "finished" };
+
+export async function updaterDetect(): Promise<DetectResult> {
+  return invoke<DetectResult>("updater_detect");
+}
+
+export async function updaterDownload(
+  url: string,
+  onEvent: (e: DownloadEvent) => void,
+): Promise<string> {
+  const { Channel } = await import("@tauri-apps/api/core");
+  const channel = new Channel<DownloadEvent>();
+  channel.onmessage = onEvent;
+  return invoke<string>("updater_download", { url, onEvent: channel });
+}
+
+export async function updaterInstall(
+  path: string,
+  packageManager: PackageManager,
+): Promise<void> {
+  await invoke<void>("updater_install", { path, packageManager });
+}
