@@ -36,7 +36,8 @@ jobs:
             libssl-dev \
             patchelf \
             rpm \
-            xdg-utils
+            xdg-utils \
+            libfuse2t64
 
       - uses: pnpm/action-setup@v4
 
