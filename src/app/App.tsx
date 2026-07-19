@@ -71,6 +71,7 @@ import {
   writeToSession,
 } from "@/modules/terminal";
 import { ThemeProvider, useThemeFileEditing } from "@/modules/theme";
+import { UpdaterDialog, UpdaterProvider } from "@/modules/updater";
 
 import { useWorkspaceEnvStore, type WorkspaceEnv } from "@/modules/workspace";
 import { listen } from "@tauri-apps/api/event";
@@ -967,8 +968,9 @@ export default function App() {
 
   const shell = (
     <ThemeProvider>
-      <TooltipProvider>
-        <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <UpdaterProvider>
+        <TooltipProvider>
+          <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
           {!zenMode && (
             <Header
               tabs={spaceTabs}
@@ -1124,6 +1126,8 @@ export default function App() {
             onCreated={(path) => openFileTab(path)}
           />
 
+          <UpdaterDialog />
+
 
 
           <CloseDialogs
@@ -1143,6 +1147,7 @@ export default function App() {
           />
         </div>
       </TooltipProvider>
+      </UpdaterProvider>
     </ThemeProvider>
   );
 

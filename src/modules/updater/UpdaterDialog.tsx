@@ -16,28 +16,34 @@ const RELEASE_DOWNLOAD_URL =
   "https://github.com/kevsmir02/puhon/releases/latest";
 
 export function UpdaterDialog() {
-  const { status, install, dismiss } = useUpdater();
+  const { status, isManual, install, dismiss } = useUpdater();
   const [copied, setCopied] = useState(false);
   const manualVersion =
     status.kind === "manual-available" ? status.info.version : "";
   const rpmCommand = `sudo dnf install ./puhon-${manualVersion}-1.x86_64.rpm`;
 
   const open =
-    status.kind === "available" ||
-    status.kind === "pkg-available" ||
-    status.kind === "manual-available" ||
-    status.kind === "downloading" ||
+    status.kind === "ready" ||
     status.kind === "installing" ||
-    status.kind === "ready";
+    status.kind === "manual-available" ||
+    (isManual && (
+      status.kind === "checking" ||
+      status.kind === "downloading" ||
+      status.kind === "available" ||
+      status.kind === "pkg-available" ||
+      status.kind === "error"
+    ));
 
   if (!open) return null;
 
-  const update = status.kind === "available" ? status.update : null;
-  const pkg = status.kind === "pkg-available" ? status.info : null;
-  const manual = status.kind === "manual-available" ? status.info : null;
   const downloading = status.kind === "downloading";
   const ready = status.kind === "ready";
   const installing = status.kind === "installing";
+  const error = status.kind === "error";
+
+  const activeUpdate = ready ? status.update : (downloading ? status.update : null);
+  const activePkg = ready ? status.info : (downloading ? status.info : null);
+  const manual = status.kind === "manual-available" ? status.info : null;
 
   const copyCommand = async () => {
     if (!navigator?.clipboard?.writeText) return;
@@ -60,9 +66,9 @@ export function UpdaterDialog() {
       onOpenChange={(o) => {
         if (
           !o &&
-          (status.kind === "available" ||
-            status.kind === "pkg-available" ||
-            status.kind === "manual-available")
+          (status.kind === "ready" ||
+            status.kind === "manual-available" ||
+            status.kind === "error")
         )
           dismiss();
       }}
@@ -76,11 +82,15 @@ export function UpdaterDialog() {
                 ? "Downloading update…"
                 : installing
                   ? "Installing…"
-                  : pkg
-                    ? `Puhon v${pkg.version} is available`
-                    : manual
-                      ? `Puhon v${manual.version} is available`
-                      : `Puhon v${update?.version} is available`}
+                  : error
+                    ? "Update failed"
+                    : activePkg
+                      ? `Puhon v${activePkg.version} is available`
+                      : manual
+                        ? `Puhon v${manual.version} is available`
+                        : activeUpdate
+                          ? `Puhon v${activeUpdate.version} is available`
+                          : "Puhon update"}
           </DialogTitle>
           <DialogDescription>
             {ready
@@ -91,11 +101,13 @@ export function UpdaterDialog() {
                   : "Downloading…"
                 : installing
                   ? "Enter your password in the system prompt."
-                  : pkg
-                    ? `You're on v${pkg.currentVersion}. Installing will ask for your password.`
-                    : manual
-                      ? `You're on v${manual.currentVersion}. Grab the RPM from the release page or run the command below.`
-                      : "A new version is ready to install."}
+                  : error
+                    ? status.message
+                    : activePkg
+                      ? `You're on v${activePkg.currentVersion}. Installing will ask for your password.`
+                      : manual
+                        ? `You're on v${manual.currentVersion}. Grab the RPM from the release page or run the command below.`
+                        : "A new version is ready to install."}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,9 +118,9 @@ export function UpdaterDialog() {
           <Progress value={undefined} className="mt-2 animate-pulse" />
         )}
 
-        {pkg && (
+        {activePkg && ready && (
           <p className="mt-2 text-sm text-muted-foreground">
-            Puhon v{pkg.version} is available (you are on v{pkg.currentVersion}
+            Puhon v{activePkg.version} is available (you are on v{activePkg.currentVersion}
             ). Installing will ask for your password.
           </p>
         )}
@@ -136,23 +148,18 @@ export function UpdaterDialog() {
         )}
 
         <DialogFooter>
-          {status.kind === "available" && (
-            <>
-              <Button variant="ghost" size="sm" onClick={dismiss}>
-                Later
-              </Button>
-              <Button size="sm" onClick={() => void install()}>
-                Install &amp; restart
-              </Button>
-            </>
+          {error && (
+            <Button size="sm" onClick={dismiss}>
+              Close
+            </Button>
           )}
-          {status.kind === "pkg-available" && (
+          {ready && (
             <>
               <Button variant="ghost" size="sm" onClick={dismiss}>
                 Later
               </Button>
               <Button size="sm" onClick={() => void install()}>
-                Install update
+                {activeUpdate ? "Install & restart" : "Install update"}
               </Button>
             </>
           )}
@@ -174,3 +181,4 @@ export function UpdaterDialog() {
     </Dialog>
   );
 }
+

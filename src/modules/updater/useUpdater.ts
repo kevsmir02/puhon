@@ -2,7 +2,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { arch } from "@tauri-apps/plugin-os";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   pickArtifactUrl,
   type GhAsset,
@@ -44,9 +44,9 @@ export type UpdaterStatus =
   | { kind: "available"; update: Update }
   | { kind: "manual-available"; info: ManualUpdateInfo }
   | { kind: "pkg-available"; info: PkgUpdateInfo }
-  | { kind: "downloading"; downloaded: number; contentLength: number | null }
+  | { kind: "downloading"; downloaded: number; contentLength: number | null; info?: PkgUpdateInfo; update?: Update }
   | { kind: "installing" }
-  | { kind: "ready" }
+  | { kind: "ready"; update?: Update; info?: PkgUpdateInfo; pkgPath?: string }
   | { kind: "error"; message: string };
 
 function parseVersion(v: string): number[] {
@@ -97,137 +97,6 @@ async function fetchPkgInfo(
   };
 }
 
-interface Options {
-  manual?: boolean;
-}
-
-interface HookOptions {
-  autoCheck?: boolean;
-}
-
-export function useUpdater({ autoCheck = true }: HookOptions = {}) {
-  const [status, setStatus] = useState<UpdaterStatus>({
-    kind: "idle",
-  });
-
-  const runCheck = useCallback(async ({ manual }: Options = {}) => {
-    if (!manual) {
-      const last = Number(localStorage.getItem(LAST_CHECK_KEY) ?? 0);
-      if (Date.now() - last < CHECK_INTERVAL_MS) return;
-    }
-    setStatus({ kind: "checking" });
-    try {
-      const detect: DetectResult = await updaterDetect();
-      if (detect.isAppimage) {
-        const update = await check();
-        setStatus(
-          update ? { kind: "available", update } : { kind: "uptodate" },
-        );
-        if (!update) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
-        return;
-      }
-      const pm = detect.packageManager;
-      if (pm) {
-        const info = await fetchPkgInfo(pm, await getVersion());
-        setStatus(
-          info ? { kind: "pkg-available", info } : { kind: "uptodate" },
-        );
-        if (!info) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
-        return;
-      }
-      setStatus({
-        kind: "manual-available",
-        info: await fallbackInfo(),
-      });
-    } catch (err) {
-      setStatus({ kind: "error", message: String(err) });
-    }
-  }, []);
-
-  const install = useCallback(async () => {
-    if (status.kind === "available") {
-      const { update } = status;
-      let total: number | null = null;
-      let downloaded = 0;
-      setStatus({
-        kind: "downloading",
-        downloaded: 0,
-        contentLength: null,
-      });
-      try {
-        await update.downloadAndInstall((event) => {
-          if (event.event === "Started") {
-            total = event.data.contentLength ?? null;
-            setStatus({
-              kind: "downloading",
-              downloaded: 0,
-              contentLength: total,
-            });
-          } else if (event.event === "Progress") {
-            downloaded += event.data.chunkLength;
-            setStatus({
-              kind: "downloading",
-              downloaded,
-              contentLength: total,
-            });
-          } else if (event.event === "Finished") {
-            setStatus({ kind: "ready" });
-          }
-        });
-        await relaunch();
-      } catch (err) {
-        setStatus({ kind: "error", message: String(err) });
-      }
-      return;
-    }
-    if (status.kind !== "pkg-available") return;
-    const { artifactUrl, packageManager, releaseUrl } = status.info;
-    setStatus({
-      kind: "downloading",
-      downloaded: 0,
-      contentLength: null,
-    });
-    try {
-      const path = await updaterDownload(artifactUrl, (e: DownloadEvent) => {
-        if (e.event === "started")
-          setStatus({
-            kind: "downloading",
-            downloaded: 0,
-            contentLength: e.contentLength,
-          });
-        else if (e.event === "progress")
-          setStatus({
-            kind: "downloading",
-            downloaded: e.downloaded,
-            contentLength: e.total,
-          });
-      });
-      setStatus({ kind: "installing" });
-      await updaterInstall(path, packageManager);
-      await relaunch();
-    } catch (err) {
-      const msg = String(err);
-      if (msg.startsWith("pkexec-missing")) {
-        setStatus({
-          kind: "manual-available",
-          info: { ...status.info, releaseUrl },
-        });
-      } else {
-        setStatus({ kind: "error", message: msg });
-      }
-    }
-  }, [status]);
-
-  const dismiss = useCallback(() => setStatus({ kind: "idle" }), []);
-
-  useEffect(() => {
-    if (!autoCheck) return;
-    void runCheck();
-  }, [autoCheck, runCheck]);
-
-  return { status, check: runCheck, install, dismiss };
-}
-
 async function fallbackInfo(): Promise<ManualUpdateInfo> {
   const current = await getVersion();
   const res = await fetch(GITHUB_LATEST_RELEASE, {
@@ -245,3 +114,185 @@ async function fallbackInfo(): Promise<ManualUpdateInfo> {
     releaseUrl: data.html_url,
   };
 }
+
+interface Options {
+  manual?: boolean;
+}
+
+interface HookOptions {
+  autoCheck?: boolean;
+}
+
+export interface UpdaterContextType {
+  status: UpdaterStatus;
+  isManual: boolean;
+  check: (options?: Options) => Promise<void>;
+  install: () => Promise<void>;
+  dismiss: () => void;
+}
+
+const UpdaterContext = createContext<UpdaterContextType | null>(null);
+
+export function UpdaterProvider({
+  children,
+  autoCheck = true,
+}: HookOptions & { children: React.ReactNode }) {
+  const [status, setStatus] = useState<UpdaterStatus>({
+    kind: "idle",
+  });
+  const [isManual, setIsManual] = useState(false);
+
+  const runCheck = useCallback(async ({ manual }: Options = {}) => {
+    setIsManual(!!manual);
+    if (!manual) {
+      const last = Number(localStorage.getItem(LAST_CHECK_KEY) ?? 0);
+      if (Date.now() - last < CHECK_INTERVAL_MS) return;
+    }
+    setStatus({ kind: "checking" });
+    try {
+      const detect: DetectResult = await updaterDetect();
+      if (detect.isAppimage) {
+        const update = await check();
+        if (update) {
+          setStatus({
+            kind: "downloading",
+            downloaded: 0,
+            contentLength: null,
+            update,
+          });
+          let total: number | null = null;
+          let downloaded = 0;
+          try {
+            await update.download((event) => {
+              if (event.event === "Started") {
+                total = event.data.contentLength ?? null;
+                setStatus({
+                  kind: "downloading",
+                  downloaded: 0,
+                  contentLength: total,
+                  update,
+                });
+              } else if (event.event === "Progress") {
+                downloaded += event.data.chunkLength;
+                setStatus({
+                  kind: "downloading",
+                  downloaded,
+                  contentLength: total,
+                  update,
+                });
+              }
+            });
+            setStatus({ kind: "ready", update });
+          } catch (err) {
+            setStatus({ kind: "error", message: String(err) });
+          }
+        } else {
+          setStatus({ kind: "uptodate" });
+          if (!manual) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+        }
+        return;
+      }
+      const pm = detect.packageManager;
+      if (pm) {
+        const info = await fetchPkgInfo(pm, await getVersion());
+        if (info) {
+          setStatus({
+            kind: "downloading",
+            downloaded: 0,
+            contentLength: null,
+            info,
+          });
+          try {
+            const path = await updaterDownload(info.artifactUrl, (e: DownloadEvent) => {
+              if (e.event === "started")
+                setStatus({
+                  kind: "downloading",
+                  downloaded: 0,
+                  contentLength: e.contentLength,
+                  info,
+                });
+              else if (e.event === "progress")
+                setStatus({
+                  kind: "downloading",
+                  downloaded: e.downloaded,
+                  contentLength: e.total,
+                  info,
+                });
+            });
+            setStatus({ kind: "ready", info, pkgPath: path });
+          } catch (err) {
+            setStatus({ kind: "error", message: String(err) });
+          }
+        } else {
+          setStatus({ kind: "uptodate" });
+          if (!manual) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+        }
+        return;
+      }
+      const info = await fallbackInfo();
+      if (isNewer(info.version, info.currentVersion)) {
+        setStatus({
+          kind: "manual-available",
+          info,
+        });
+      } else {
+        setStatus({ kind: "uptodate" });
+      }
+    } catch (err) {
+      setStatus({ kind: "error", message: String(err) });
+    }
+  }, []);
+
+  const install = useCallback(async () => {
+    if (status.kind !== "ready") return;
+
+    if (status.update) {
+      try {
+        setStatus({ kind: "installing" });
+        await status.update.install();
+        await relaunch();
+      } catch (err) {
+        setStatus({ kind: "error", message: String(err) });
+      }
+    } else if (status.info && status.pkgPath) {
+      try {
+        setStatus({ kind: "installing" });
+        await updaterInstall(status.pkgPath, status.info.packageManager);
+        await relaunch();
+      } catch (err) {
+        const msg = String(err);
+        if (msg.startsWith("pkexec-missing")) {
+          setStatus({
+            kind: "manual-available",
+            info: { ...status.info, releaseUrl: status.info.releaseUrl },
+          });
+        } else {
+          setStatus({ kind: "error", message: msg });
+        }
+      }
+    }
+  }, [status]);
+
+  const dismiss = useCallback(() => setStatus({ kind: "idle" }), []);
+
+  useEffect(() => {
+    if (!autoCheck) return;
+    void runCheck();
+  }, [autoCheck, runCheck]);
+
+  const value = useMemo(
+    () => ({ status, isManual, check: runCheck, install, dismiss }),
+    [status, isManual, runCheck, install, dismiss]
+  );
+
+  return createElement(UpdaterContext.Provider, { value }, children);
+}
+
+export function useUpdater() {
+  const context = useContext(UpdaterContext);
+  if (!context) {
+    throw new Error("useUpdater must be used within an UpdaterProvider");
+  }
+  return context;
+}
+
