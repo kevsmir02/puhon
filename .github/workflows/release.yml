@@ -114,6 +114,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Patch latest.json with re-signed AppImage signatures
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
