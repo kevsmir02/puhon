@@ -1,6 +1,6 @@
 pub mod modules;
 
-use modules::{fs, git, history, net, pty, secrets, session, shell, workspace};
+use modules::{fs, git, history, net, pty, secrets, session, shell, updater, workspace};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -248,6 +248,9 @@ pub fn run() {
             session::session_load,
             session::session_delete,
             session::session_delete_space,
+            updater::updater_detect,
+            updater::updater_download,
+            updater::updater_install,
             fs::search::fs_search,
             fs::search::fs_list_files,
             fs::grep::fs_grep,
