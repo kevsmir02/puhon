@@ -1,6 +1,6 @@
 pub mod modules;
 
-use modules::{fs, git, history, net, pty, secrets, session, shell, updater, workspace};
+use modules::{fs, git, history, pty, session, shell, updater, workspace};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -206,7 +206,6 @@ pub fn run() {
         })
         .manage(pty::PtyState::default())
         .manage(shell::ShellState::default())
-        .manage(secrets::SecretsState::default())
         .manage(session::SessionState)
         .manage(fs::watch::FsWatchState::default())
         .manage(history::HistoryState::default())
@@ -291,11 +290,6 @@ pub fn run() {
             get_launch_dir,
             get_launch_files,
             open_settings_window,
-            secrets::secrets_get,
-            secrets::secrets_set,
-            secrets::secrets_delete,
-            secrets::secrets_get_all,
-            net::lm_ping,
             history::history_suggest,
             history::history_commands,
             history::history_record,

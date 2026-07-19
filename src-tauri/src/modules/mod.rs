@@ -1,10 +1,8 @@
 pub mod fs;
 pub mod git;
 pub mod history;
-pub mod net;
 pub mod proc;
 pub mod pty;
-pub mod secrets;
 pub mod session;
 pub mod shell;
 pub mod updater;

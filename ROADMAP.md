@@ -95,13 +95,6 @@ The themes below frame every scope decision.
 - [ ] **Release automation.** CHANGELOG generation, version bump, tag flow.
 - [ ] **Selective TS-to-Rust migration**, only where a profiler shows measurable wins in the agent byte path (parsing, buffering, serialization). No speculative rewrites.
 
-## Cleanup tracked from the AI strip
-
-Dead surface left behind when the built-in AI subsystem was removed. Each is small and independent.
-
-- [ ] `src-tauri/src/modules/secrets.rs` (OS keychain store) has no frontend caller. External CLIs handle their own auth. Remove or repurpose.
-- [ ] `src-tauri/src/modules/net.rs` exposes only `lm_ping` (local-model ping); the AI HTTP proxy it served is gone. Remove the dead surface.
-
 ## Out of scope
 
 Categories that will not be built into Terax. Feature requests in these categories will be closed.
