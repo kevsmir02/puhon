@@ -24,16 +24,20 @@ export function UpdaterDialog() {
 
   const open =
     status.kind === "available" ||
+    status.kind === "pkg-available" ||
     status.kind === "manual-available" ||
     status.kind === "downloading" ||
+    status.kind === "installing" ||
     status.kind === "ready";
 
   if (!open) return null;
 
   const update = status.kind === "available" ? status.update : null;
+  const pkg = status.kind === "pkg-available" ? status.info : null;
   const manual = status.kind === "manual-available" ? status.info : null;
   const downloading = status.kind === "downloading";
   const ready = status.kind === "ready";
+  const installing = status.kind === "installing";
 
   const copyCommand = async () => {
     if (!navigator?.clipboard?.writeText) return;
@@ -56,7 +60,9 @@ export function UpdaterDialog() {
       onOpenChange={(o) => {
         if (
           !o &&
-          (status.kind === "available" || status.kind === "manual-available")
+          (status.kind === "available" ||
+            status.kind === "pkg-available" ||
+            status.kind === "manual-available")
         )
           dismiss();
       }}
@@ -68,9 +74,13 @@ export function UpdaterDialog() {
               ? "Update ready"
               : downloading
                 ? "Downloading update…"
-                : manual
-                  ? `Terax v${manual.version} is available`
-                  : `Terax v${update?.version} is available`}
+                : installing
+                  ? "Installing…"
+                  : pkg
+                    ? `Terax v${pkg.version} is available`
+                    : manual
+                      ? `Terax v${manual.version} is available`
+                      : `Terax v${update?.version} is available`}
           </DialogTitle>
           <DialogDescription>
             {ready
@@ -79,9 +89,13 @@ export function UpdaterDialog() {
                 ? progress !== null
                   ? `${progress.toFixed(0)}%`
                   : "Downloading…"
-                : manual
-                  ? `You're on v${manual.currentVersion}. Grab the RPM from the release page or run the command below.`
-                  : "A new version is ready to install."}
+                : installing
+                  ? "Enter your password in the system prompt."
+                  : pkg
+                    ? `You're on v${pkg.currentVersion}. Installing will ask for your password.`
+                    : manual
+                      ? `You're on v${manual.currentVersion}. Grab the RPM from the release page or run the command below.`
+                      : "A new version is ready to install."}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,6 +104,19 @@ export function UpdaterDialog() {
         )}
         {downloading && progress === null && (
           <Progress value={undefined} className="mt-2 animate-pulse" />
+        )}
+
+        {pkg && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Terax v{pkg.version} is available (you are on v{pkg.currentVersion}).
+            Installing will ask for your password.
+          </p>
+        )}
+
+        {installing && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Installing... enter your password in the system prompt.
+          </p>
         )}
 
         {manual && (
@@ -116,6 +143,16 @@ export function UpdaterDialog() {
               </Button>
               <Button size="sm" onClick={() => void install()}>
                 Install &amp; restart
+              </Button>
+            </>
+          )}
+          {status.kind === "pkg-available" && (
+            <>
+              <Button variant="ghost" size="sm" onClick={dismiss}>
+                Later
+              </Button>
+              <Button size="sm" onClick={() => void install()}>
+                Install update
               </Button>
             </>
           )}

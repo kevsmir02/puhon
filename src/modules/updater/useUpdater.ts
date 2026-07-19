@@ -1,12 +1,20 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { arch } from "@tauri-apps/plugin-os";
 import { relaunch } from "@tauri-apps/plugin-process";
-import {
-  check,
-  type Update,
-  type DownloadEvent,
-} from "@tauri-apps/plugin-updater";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useState } from "react";
-import { IS_LINUX } from "@/lib/platform";
+import {
+  pickArtifactUrl,
+  type GhAsset,
+  type PackageManager,
+} from "./lib/pickArtifact";
+import {
+  updaterDetect,
+  updaterDownload,
+  updaterInstall,
+  type DetectResult,
+  type DownloadEvent,
+} from "@/lib/native";
 
 const LAST_CHECK_KEY = "terax:updater:last-check";
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
@@ -20,13 +28,24 @@ export interface ManualUpdateInfo {
   releaseUrl: string;
 }
 
+export interface PkgUpdateInfo {
+  version: string;
+  currentVersion: string;
+  body: string;
+  artifactUrl: string;
+  packageManager: PackageManager;
+  releaseUrl: string;
+}
+
 export type UpdaterStatus =
   | { kind: "idle" }
   | { kind: "checking" }
   | { kind: "uptodate" }
   | { kind: "available"; update: Update }
   | { kind: "manual-available"; info: ManualUpdateInfo }
+  | { kind: "pkg-available"; info: PkgUpdateInfo }
   | { kind: "downloading"; downloaded: number; contentLength: number | null }
+  | { kind: "installing" }
   | { kind: "ready" }
   | { kind: "error"; message: string };
 
@@ -50,27 +69,30 @@ function isNewer(remote: string, current: string): boolean {
   return false;
 }
 
-async function checkLinuxRelease(): Promise<ManualUpdateInfo | null> {
-  const [current, res] = await Promise.all([
-    getVersion(),
-    fetch(GITHUB_LATEST_RELEASE, {
-      headers: { Accept: "application/vnd.github+json" },
-    }),
-  ]);
-  if (!res.ok) {
-    throw new Error(`GitHub API ${res.status}`);
-  }
+async function fetchPkgInfo(
+  pm: PackageManager,
+  current: string,
+): Promise<PkgUpdateInfo | null> {
+  const res = await fetch(GITHUB_LATEST_RELEASE, {
+    headers: { Accept: "application/vnd.github+json" },
+  });
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
   const data = (await res.json()) as {
     tag_name: string;
     body?: string;
     html_url: string;
+    assets: GhAsset[];
   };
-  const remote = data.tag_name.replace(/^v/, "");
-  if (!isNewer(remote, current)) return null;
+  const version = data.tag_name.replace(/^v/, "");
+  if (!isNewer(version, current)) return null;
+  const artifactUrl = pickArtifactUrl(data.assets, pm, arch());
+  if (!artifactUrl) return null;
   return {
-    version: remote,
+    version,
     currentVersion: current,
     body: data.body ?? "",
+    artifactUrl,
+    packageManager: pm,
     releaseUrl: data.html_url,
   };
 }
@@ -84,7 +106,9 @@ interface HookOptions {
 }
 
 export function useUpdater({ autoCheck = true }: HookOptions = {}) {
-  const [status, setStatus] = useState<UpdaterStatus>({ kind: "idle" });
+  const [status, setStatus] = useState<UpdaterStatus>({
+    kind: "idle",
+  });
 
   const runCheck = useCallback(async ({ manual }: Options = {}) => {
     if (!manual) {
@@ -93,59 +117,114 @@ export function useUpdater({ autoCheck = true }: HookOptions = {}) {
     }
     setStatus({ kind: "checking" });
     try {
-      if (IS_LINUX) {
-        const info = await checkLinuxRelease();
-        if (info) {
-          setStatus({ kind: "manual-available", info });
-        } else {
+      const detect: DetectResult = await updaterDetect();
+      if (detect.isAppimage) {
+        const update = await check();
+        setStatus(
+          update
+            ? { kind: "available", update }
+            : { kind: "uptodate" },
+        );
+        if (!update)
           localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
-          setStatus({ kind: "uptodate" });
-        }
         return;
       }
-      const update = await check();
-      if (update) {
-        setStatus({ kind: "available", update });
-      } else {
-        localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
-        setStatus({ kind: "uptodate" });
+      const pm = detect.packageManager;
+      if (pm) {
+        const info = await fetchPkgInfo(pm, await getVersion());
+        setStatus(
+          info
+            ? { kind: "pkg-available", info }
+            : { kind: "uptodate" },
+        );
+        if (!info)
+          localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+        return;
       }
+      setStatus({
+        kind: "manual-available",
+        info: await fallbackInfo(),
+      });
     } catch (err) {
       setStatus({ kind: "error", message: String(err) });
     }
   }, []);
 
   const install = useCallback(async () => {
-    if (status.kind !== "available") return;
-    const { update } = status;
-    let total: number | null = null;
-    let downloaded = 0;
-    setStatus({ kind: "downloading", downloaded: 0, contentLength: null });
+    if (status.kind === "available") {
+      const { update } = status;
+      let total: number | null = null;
+      let downloaded = 0;
+      setStatus({
+        kind: "downloading",
+        downloaded: 0,
+        contentLength: null,
+      });
+      try {
+        await update.downloadAndInstall((event) => {
+          if (event.event === "Started") {
+            total = event.data.contentLength ?? null;
+            setStatus({
+              kind: "downloading",
+              downloaded: 0,
+              contentLength: total,
+            });
+          } else if (event.event === "Progress") {
+            downloaded += event.data.chunkLength;
+            setStatus({
+              kind: "downloading",
+              downloaded,
+              contentLength: total,
+            });
+          } else if (event.event === "Finished") {
+            setStatus({ kind: "ready" });
+          }
+        });
+        await relaunch();
+      } catch (err) {
+        setStatus({ kind: "error", message: String(err) });
+      }
+      return;
+    }
+    if (status.kind !== "pkg-available") return;
+    const { artifactUrl, packageManager, releaseUrl } = status.info;
+    setStatus({
+      kind: "downloading",
+      downloaded: 0,
+      contentLength: null,
+    });
     try {
-      await update.downloadAndInstall((event: DownloadEvent) => {
-        if (event.event === "Started") {
-          total = event.data.contentLength ?? null;
+      const path = await updaterDownload(artifactUrl, (e: DownloadEvent) => {
+        if (e.event === "started")
           setStatus({
             kind: "downloading",
             downloaded: 0,
-            contentLength: total,
+            contentLength: e.contentLength,
           });
-        } else if (event.event === "Progress") {
-          downloaded += event.data.chunkLength;
-          setStatus({ kind: "downloading", downloaded, contentLength: total });
-        } else if (event.event === "Finished") {
-          setStatus({ kind: "ready" });
-        }
+        else if (e.event === "progress")
+          setStatus({
+            kind: "downloading",
+            downloaded: e.downloaded,
+            contentLength: e.total,
+          });
       });
+      setStatus({ kind: "installing" });
+      await updaterInstall(path, packageManager);
       await relaunch();
     } catch (err) {
-      setStatus({ kind: "error", message: String(err) });
+      const msg = String(err);
+      if (msg.startsWith("pkexec-missing")) {
+        setStatus({
+          kind: "manual-available",
+          info: { ...status.info, releaseUrl },
+        });
+      } else {
+        setStatus({ kind: "error", message: msg });
+      }
     }
   }, [status]);
 
-  const dismiss = useCallback(() => {
-    setStatus({ kind: "idle" });
-  }, []);
+  const dismiss = useCallback(() => setStatus({ kind: "idle" }), []);
 
   useEffect(() => {
     if (!autoCheck) return;
@@ -153,4 +232,22 @@ export function useUpdater({ autoCheck = true }: HookOptions = {}) {
   }, [autoCheck, runCheck]);
 
   return { status, check: runCheck, install, dismiss };
+}
+
+async function fallbackInfo(): Promise<ManualUpdateInfo> {
+  const current = await getVersion();
+  const res = await fetch(GITHUB_LATEST_RELEASE, {
+    headers: { Accept: "application/vnd.github+json" },
+  });
+  const data = (await res.json()) as {
+    tag_name: string;
+    body?: string;
+    html_url: string;
+  };
+  return {
+    version: data.tag_name.replace(/^v/, ""),
+    currentVersion: current,
+    body: data.body ?? "",
+    releaseUrl: data.html_url,
+  };
 }
