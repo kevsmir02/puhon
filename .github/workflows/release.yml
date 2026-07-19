@@ -7,14 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  publish-tauri:
     permissions:
       contents: write
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-24.04
+            rust_target: x86_64-unknown-linux-gnu
+            arch: x86_64
+            asset_arch: amd64
+          - platform: ubuntu-24.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            arch: aarch64
+            asset_arch: aarch64
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build dependencies
+      - name: Install Linux build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -34,30 +46,89 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: ./src-tauri -> target
-          key: linux-rpm
+          key: ${{ matrix.platform }}-${{ matrix.rust_target }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and bundle RPM
+      - id: tauri
+        uses: tauri-apps/tauri-action@v1
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build --bundles rpm
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Terax ${{ github.ref_name }}"
+          releaseBody: "See the assets to download and install. Auto-update is built in."
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.rust_target }} --bundles appimage,rpm,deb
 
-      - name: Generate release notes
-        run: ./scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md
+      # Strip bundled libwayland-* so recent Mesa (Fedora 43 / Arch / Bazzite)
+      # loads host copies; re-sign and re-upload the AppImage. Ported verbatim
+      # from upstream crynta/terax-ai, parameterized for arch.
+      - name: Fix AppImage wayland libs and re-sign
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APPIMAGE=$(ls src-tauri/target/${{ matrix.rust_target }}/release/bundle/appimage/*.AppImage | head -n1)
+          BASENAME=$(basename "$APPIMAGE")
+          WORK=$(mktemp -d)
+          cp "$APPIMAGE" "$WORK/"
+          pushd "$WORK" >/dev/null
+          chmod +x "./$BASENAME"
+          "./$BASENAME" --appimage-extract >/dev/null
+          rm -f squashfs-root/usr/lib/libwayland-client.so.0 \
+                squashfs-root/usr/lib/libwayland-egl.so.1 \
+                squashfs-root/usr/lib/libwayland-cursor.so.0 \
+                squashfs-root/usr/lib/libwayland-server.so.0
+          curl -fsSL -o appimagetool.AppImage \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-${{ matrix.arch }}.AppImage
+          chmod +x appimagetool.AppImage
+          ARCH=${{ matrix.arch }} ./appimagetool.AppImage --appimage-extract-and-run squashfs-root "$BASENAME"
+          popd >/dev/null
+          cp "$WORK/$BASENAME" "$APPIMAGE"
+          rm -f "$APPIMAGE.sig"
+          pnpm tauri signer sign "$APPIMAGE"
+          gh release upload "${GITHUB_REF_NAME}" "$APPIMAGE" "$APPIMAGE.sig" --clobber
 
-      - name: Create release and upload RPM
+  # Patch the re-signed AppImage signature into the combined latest.json so
+  # AppImage auto-update is valid. Runs after both arch legs finish.
+  patch-appimage-updater:
+    needs: publish-tauri
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Patch latest.json with re-signed AppImage signatures
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RPM=$(ls src-tauri/target/release/bundle/rpm/*.rpm | head -n1)
-          gh release create "$GITHUB_REF_NAME" "$RPM" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
-          if [ -f "$RPM.sig" ]; then
-            gh release upload "$GITHUB_REF_NAME" "$RPM.sig" --clobber
-          fi
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          gh release download "$TAG" --pattern "latest.json" --clobber
+          for SUFFIX in amd64 aarch64; do
+            gh release download "$TAG" --pattern "*_${SUFFIX}.AppImage.sig" --clobber || true
+            SIG_FILE=$(ls ./*_${SUFFIX}.AppImage.sig 2>/dev/null | head -n1 || true)
+            [ -n "$SIG_FILE" ] || continue
+            NEW_SIG=$(cat "$SIG_FILE")
+            KEY="linux-${SUFFIX/amd64/x86_64}"
+            jq -e --arg key "$KEY" 'has("platforms") and (.platforms | has($key))' latest.json >/dev/null \
+              || { echo "latest.json missing platforms.$KEY"; exit 1; }
+            jq --arg sig "$NEW_SIG" --arg key "$KEY" \
+              '.platforms[$key].signature = $sig' latest.json > latest.json.tmp
+            mv latest.json.tmp latest.json
+          done
+          gh release upload "$TAG" latest.json --clobber
