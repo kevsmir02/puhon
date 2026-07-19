@@ -2,12 +2,12 @@
   <img src="public/logo.png" width="96" height="96" alt="Terax" />
   <h1>Terax</h1>
 
-  <p><strong>Terminal-first dev workspace.</strong></p>
+  <p><strong>A terminal workspace for coding-agent CLIs.</strong></p>
 </div>
 
 ---
 
-Lightweight terminal workspace built on Tauri 2 + Rust and React 19. Native PTY backend with WebGL renderer, plus a code editor, file explorer, and source control with git graph. No telemetry, no accounts, no bloat.
+Lightweight terminal workspace built on Tauri 2 + Rust and React 19, designed to host the coding-agent CLIs you already use (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor, so you stay in one app. Native PTY backend with WebGL renderer. No telemetry, no accounts, no built-in AI.
 
 ## Features
 
@@ -47,18 +47,21 @@ Lightweight terminal workspace built on Tauri 2 + Rust and React 19. Native PTY 
 
 ## Install
 
-Download from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
+Releases currently ship Linux binaries (AppImage, .deb, .rpm). macOS and Windows build and run from source but are not in the release pipeline yet.
+
+Download Linux builds from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
 
 ### Windows
 
-- On first launch Windows may show "Windows protected your PC" — click **More info** then **Run anyway**.
+- On first launch Windows may show "Windows protected your PC". Click **More info** then **Run anyway**.
 - Default shell: `pwsh.exe` → `powershell.exe` → `cmd.exe`.
 
 ### Linux
 
-- **Arch / AUR:** `yay -S terax-bin`
-- **Nix:** `nix profile install github:crynta/terax-ai`
+- **.deb** (Debian, Ubuntu, Mint) and **.rpm** (Fedora, RHEL, openSUSE): download from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
 - **AppImage:** needs FUSE. Without it: `./Terax_*.AppImage --appimage-extract-and-run`. On Wayland with rendering issues, try `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+
+AUR and Nix are not supported install paths for this fork.
 
 ## Build from source
 
@@ -80,4 +83,4 @@ cd src-tauri && cargo test --locked
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).

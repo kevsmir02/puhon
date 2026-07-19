@@ -83,8 +83,8 @@
       }
     },
     "category": "DeveloperTool",
-    "shortDescription": "AI-native terminal emulator",
-    "longDescription": "Terax — an open-source AI-native terminal emulator with multi-tab, file explorer, code editor, web preview, voice input, and AI agents.",
+    "shortDescription": "Terminal workspace for coding-agent CLIs",
+    "longDescription": "Terax is a lightweight terminal workspace for hosting coding-agent CLIs (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor. Tauri 2 + Rust backend, React 19 + xterm.js client. No telemetry, no built-in AI.",
     "fileAssociations": [
       {
         "name": "Terax Document",

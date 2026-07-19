@@ -6,6 +6,8 @@ Terax loads `TERAX.md` from the workspace root as agent memory (similar to AGENT
 
 **Terax**: open-source terminal-native IDE. Tauri 2 + Rust (`portable-pty`) backend, React 19 + TypeScript + xterm.js (webgl) client.
 
+This fork's purpose: a lightweight host for external coding-agent CLIs (Codex, OpenCode, Pi, Claude Code). The upstream built-in AI subsystem (chat, providers, API keys, LSP) was intentionally removed; agents run in the terminal and the surrounding chrome (explorer, preview, git, editor) keeps you in one app. Cross-platform codebase; releases currently cut Linux only.
+
 - Bundle id: `app.crynta.terax`
 - Package manager: **pnpm**
 - Platforms: macOS, Linux, Windows
@@ -130,7 +132,7 @@ Each module is self-contained, exports a thin barrel via `index.ts`, and owns it
   - **macOS**: `minimumSystemVersion: 10.15`.
   - **Linux**: deb depends `libwebkit2gtk-4.1-0`, `libgtk-3-0`; rpm `webkit2gtk4.1`, `gtk3`; AppImage bundles its media framework.
   - **Windows**: NSIS installer in `currentUser` mode (no admin required), WebView2 via `embedBootstrapper` (offline install).
-- Auto-updater configured with a public minisign key; release artifacts at `https://github.com/crynta/terax-ai/releases/latest/download/latest.json`.
+- Auto-updater configured with a public minisign key; release artifacts at `https://github.com/kevsmir02/terax-ai/releases/latest/download/latest.json`.
 
 ### Known gotchas
 
@@ -145,7 +147,6 @@ Long-form contributor guides live under `docs/`. These guides elaborate on `TERA
 - `docs/README.md` - index of contributor guides
 - `docs/architecture/two-process-model.md` - IPC boundary and command reference
 - `docs/architecture/pty-shell-integration.md` - PTY, shell init scripts, OSC, ConPTY, Job Object
-- `docs/architecture/security-model.md` - consolidated security model and boundaries
 - `docs/architecture/terminal-renderer-pool.md` - renderer pool and DormantRing invariants
 - `docs/contributing/testing.md` - testing contract and core-subsystem invariants
 - `docs/release.md` - how to cut a release, trigger the workflow, and how the changelog is generated
