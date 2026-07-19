@@ -1,5 +1,8 @@
 use serde::Serialize;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use tauri::ipc::Channel;
 
 #[derive(Serialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -58,6 +61,78 @@ pub fn updater_detect() -> DetectResult {
     classify(is_appimage, rpm, deb)
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "lowercase", tag = "event")]
+pub enum DownloadEvent {
+    Started { content_length: Option<u64> },
+    Progress { downloaded: u64, total: Option<u64> },
+    Finished,
+}
+
+/// Controlled download root. Never user-supplied.
+pub fn update_dir() -> PathBuf {
+    let base = dirs::cache_dir().unwrap_or_else(std::env::temp_dir);
+    base.join("terax").join("updates")
+}
+
+pub fn validate_download_url(raw: &str) -> Result<String, String> {
+    let url = url::Url::parse(raw).map_err(|e| format!("bad url: {e}"))?;
+    if url.scheme() != "https" {
+        return Err("download url must be https".into());
+    }
+    match url.host_str() {
+        Some("github.com") | Some("objects.githubusercontent.com") => Ok(raw.into()),
+        _ => Err("download url host not allowed".into()),
+    }
+}
+
+pub fn is_within(parent: &Path, candidate: &Path) -> bool {
+    let Ok(canon_parent) = parent.canonicalize() else {
+        return false;
+    };
+    let Some(file_name) = candidate.file_name() else {
+        return false;
+    };
+    let Some(candidate_parent) = candidate.parent() else {
+        return false;
+    };
+    let Ok(canon_candidate_parent) = candidate_parent.canonicalize() else {
+        return false;
+    };
+    canon_candidate_parent.join(file_name).starts_with(canon_parent)
+}
+
+#[tauri::command]
+pub async fn updater_download(
+    url: String,
+    on_event: Channel<DownloadEvent>,
+) -> Result<String, String> {
+    let url = validate_download_url(&url)?;
+    std::fs::create_dir_all(update_dir()).map_err(|e| format!("mkdir updates: {e}"))?;
+
+    let resp = reqwest::get(&url).await.map_err(|e| format!("request: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("download http {}", resp.status()));
+    }
+    let total = resp.content_length();
+    let _ = on_event.send(DownloadEvent::Started { content_length: total });
+
+    let path = update_dir().join(format!("terax-{}.pkg", std::process::id()));
+    let mut file = std::fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
+    let mut stream = resp.bytes_stream();
+    let mut downloaded: u64 = 0;
+    while let Some(chunk) = futures_util::StreamExt::next(&mut stream).await {
+        let chunk = chunk.map_err(|e| format!("stream: {e}"))?;
+        file.write_all(&chunk).map_err(|e| format!("write: {e}"))?;
+        downloaded += chunk.len() as u64;
+        let _ = on_event.send(DownloadEvent::Progress { downloaded, total });
+    }
+    file.flush().map_err(|e| format!("flush: {e}"))?;
+    drop(file);
+    let _ = on_event.send(DownloadEvent::Finished);
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,5 +167,29 @@ mod tests {
     fn rpm_takes_precedence_over_deb() {
         let r = classify(false, true, true);
         assert_eq!(r.package_manager, Some(PackageManager::Dnf));
+    }
+
+    #[test]
+    fn accepts_github_release_url() {
+        assert!(validate_download_url(
+            "https://github.com/kevsmir02/terax-ai/releases/download/v0.9.0/Terax-0.9.0.AppImage",
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn rejects_http_and_foreign_hosts() {
+        assert!(validate_download_url("http://github.com/x").is_err());
+        assert!(validate_download_url("https://evil.example.com/x.rpm").is_err());
+        assert!(validate_download_url("not a url").is_err());
+    }
+
+    #[test]
+    fn is_within_rejects_traversal() {
+        let dir = tempfile::tempdir().unwrap();
+        let dir = dir.path();
+        assert!(is_within(dir, &dir.join("terax-0.9.0.rpm")));
+        assert!(!is_within(dir, &std::path::PathBuf::from("/etc/passwd")));
+        assert!(!is_within(dir, &dir.join("..").join("etc").join("passwd")));
     }
 }
