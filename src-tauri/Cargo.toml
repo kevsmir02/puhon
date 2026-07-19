@@ -48,6 +48,7 @@ tokio = { version = "1", default-features = false, features = ["rt"] }
 tempfile = "3"
 notify = "8.2.0"
 url = "2"
+minisign-verify = "0.2"
 which = "8.0.4"
 
 [dev-dependencies]

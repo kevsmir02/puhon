@@ -133,6 +133,61 @@ pub async fn updater_download(
     Ok(path.to_string_lossy().into_owned())
 }
 
+/// Public minisign key from tauri.conf.json plugins.updater.pubkey.
+const UPDATER_PUBKEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwQ0M5QjRBRjAwQzc4QkUKUldTK2VBendTcHZNY0FweHNsZ1Z6cHBweGo3U2hXdHl6dmdDRll2Vzg1cWRZYS90Z2VKU3g1MVkK";
+
+pub fn build_install_args(pm: PackageManager, path: &str) -> Vec<String> {
+    match pm {
+        PackageManager::Dnf => vec![
+            "pkexec".into(), "dnf".into(), "install".into(), "-y".into(), path.into(),
+        ],
+        PackageManager::Apt => vec![
+            "pkexec".into(), "apt-get".into(), "install".into(), "--yes".into(), path.into(),
+        ],
+    }
+}
+
+pub fn verify_signature(data: &[u8], sig_text: &str, pubkey_b64: &str) -> Result<(), String> {
+    let pk = minisign_verify::PublicKey::from_base64(pubkey_b64)
+        .map_err(|e| format!("bad pubkey: {e}"))?;
+    let sig = minisign_verify::Signature::decode(sig_text)
+        .map_err(|e| format!("bad signature: {e}"))?;
+    pk.verify(data, &sig, false).map_err(|e| format!("signature mismatch: {e}"))
+}
+
+fn read_sig_for(pkg_path: &Path) -> Result<String, String> {
+    let sig_path = format!("{}.sig", pkg_path.to_string_lossy());
+    std::fs::read_to_string(&sig_path).map_err(|e| format!("read sig {sig_path}: {e}"))
+}
+
+#[tauri::command]
+pub async fn updater_install(
+    path: String,
+    package_manager: PackageManager,
+) -> Result<(), String> {
+    let pkg_path = PathBuf::from(&path);
+    if !is_within(&update_dir(), &pkg_path) {
+        return Err("install path outside controlled dir".into());
+    }
+    if which::which("pkexec").is_err() {
+        return Err("pkexec-missing: pkexec not found on PATH".into());
+    }
+    let data = std::fs::read(&pkg_path).map_err(|e| format!("read pkg: {e}"))?;
+    let sig_text = read_sig_for(&pkg_path)?;
+    verify_signature(&data, &sig_text, UPDATER_PUBKEY)?;
+
+    let mut args = build_install_args(package_manager, &path);
+    let program = args.remove(0);
+    let status = Command::new(&program)
+        .args(&args)
+        .status()
+        .map_err(|e| format!("spawn {program}: {e}"))?;
+    if !status.success() {
+        return Err(format!("install exited {status}"));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,5 +246,30 @@ mod tests {
         assert!(is_within(dir, &dir.join("terax-0.9.0.rpm")));
         assert!(!is_within(dir, &std::path::PathBuf::from("/etc/passwd")));
         assert!(!is_within(dir, &dir.join("..").join("etc").join("passwd")));
+    }
+
+    #[test]
+    fn dnf_args_use_fixed_vector() {
+        let a = build_install_args(PackageManager::Dnf, "/tmp/x.rpm");
+        assert_eq!(
+            a,
+            vec!["pkexec", "dnf", "install", "-y", "/tmp/x.rpm"]
+                .into_iter().map(String::from).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn apt_args_use_fixed_vector() {
+        let a = build_install_args(PackageManager::Apt, "/tmp/x.deb");
+        assert_eq!(
+            a,
+            vec!["pkexec", "apt-get", "install", "--yes", "/tmp/x.deb"]
+                .into_iter().map(String::from).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn sig_verify_rejects_malformed_inputs() {
+        assert!(verify_signature(b"data", "not-a-sig", "not-a-key").is_err());
     }
 }
