@@ -7,4 +7,5 @@ pub mod pty;
 pub mod secrets;
 pub mod session;
 pub mod shell;
+pub mod updater;
 pub mod workspace;
