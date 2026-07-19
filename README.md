@@ -3,14 +3,14 @@
   <h1>Puhon</h1>
 
   <p><strong>A terminal workspace for coding-agent CLIs.</strong></p>
-  <p><em>puhon</em>, Filipino (Cebuano) for "hopefully."</p>
+  <p><em>puhon</em>, Filipino (Cebuano) for "hopefully, in God's time."</p>
 </div>
 
 ---
 
 Lightweight terminal workspace built on Tauri 2 + Rust and React 19, designed to host the coding-agent CLIs you already use (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor, so you stay in one app. Native PTY backend with WebGL renderer. No telemetry, no accounts, no built-in AI.
 
-The name is the Cebuano word for "hopefully," which is exactly what you do when you hand a task to an agent: launch it, and *puhon* it gets it right.
+The name is Cebuano for "hopefully, in God's time," which is exactly what you do when you hand a task to an agent: launch it, and *puhon* it gets it right.
 
 ## Features
 
