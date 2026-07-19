@@ -13,14 +13,14 @@ import { useState } from "react";
 import { useUpdater } from "./useUpdater";
 
 const RELEASE_DOWNLOAD_URL =
-  "https://github.com/kevsmir02/terax-ai/releases/latest";
+  "https://github.com/kevsmir02/puhon/releases/latest";
 
 export function UpdaterDialog() {
   const { status, install, dismiss } = useUpdater();
   const [copied, setCopied] = useState(false);
   const manualVersion =
     status.kind === "manual-available" ? status.info.version : "";
-  const rpmCommand = `sudo dnf install ./terax-${manualVersion}-1.x86_64.rpm`;
+  const rpmCommand = `sudo dnf install ./puhon-${manualVersion}-1.x86_64.rpm`;
 
   const open =
     status.kind === "available" ||
@@ -77,14 +77,14 @@ export function UpdaterDialog() {
                 : installing
                   ? "Installing…"
                   : pkg
-                    ? `Terax v${pkg.version} is available`
+                    ? `Puhon v${pkg.version} is available`
                     : manual
-                      ? `Terax v${manual.version} is available`
-                      : `Terax v${update?.version} is available`}
+                      ? `Puhon v${manual.version} is available`
+                      : `Puhon v${update?.version} is available`}
           </DialogTitle>
           <DialogDescription>
             {ready
-              ? "Restart Terax to finish installing."
+              ? "Restart Puhon to finish installing."
               : downloading
                 ? progress !== null
                   ? `${progress.toFixed(0)}%`
@@ -108,7 +108,7 @@ export function UpdaterDialog() {
 
         {pkg && (
           <p className="mt-2 text-sm text-muted-foreground">
-            Terax v{pkg.version} is available (you are on v{pkg.currentVersion}).
+            Puhon v{pkg.version} is available (you are on v{pkg.currentVersion}).
             Installing will ask for your password.
           </p>
         )}

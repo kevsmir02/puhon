@@ -13,7 +13,7 @@ import { useSystemInfo } from "./useSystemInfo";
 
 const ShellInput = lazy(() => import("@/modules/terminal/block/ShellInput"));
 
-export const TOGGLE_BLOCK_INPUT_EVENT = "terax:toggle-block-input";
+export const TOGGLE_BLOCK_INPUT_EVENT = "puhon:toggle-block-input";
 
 type Props = {
   isBlockTab: boolean;
@@ -107,7 +107,7 @@ export function WorkspaceInputBar({
   if (!content) return null;
 
   return (
-    <div data-state="open" className="terax-reveal">
+    <div data-state="open" className="puhon-reveal">
       <div>{content}</div>
     </div>
   );

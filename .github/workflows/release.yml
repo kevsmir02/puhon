@@ -65,7 +65,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Terax ${{ github.ref_name }}"
+          releaseName: "Puhon ${{ github.ref_name }}"
           releaseBody: "See the assets to download and install. Auto-update is built in."
           releaseDraft: true
           prerelease: false
@@ -73,7 +73,7 @@ jobs:
 
       # Strip bundled libwayland-* so recent Mesa (Fedora 43 / Arch / Bazzite)
       # loads host copies; re-sign and re-upload the AppImage. Ported verbatim
-      # from upstream crynta/terax-ai, parameterized for arch.
+      # from upstream kevsmir02/puhon, parameterized for arch.
       - name: Fix AppImage wayland libs and re-sign
         if: startsWith(github.ref, 'refs/tags/')
         env:

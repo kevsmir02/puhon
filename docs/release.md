@@ -1,4 +1,4 @@
-# Releasing Terax
+# Releasing Puhon
 
 How to cut a release and what happens when you do. Written for both humans and AI agents.
 
@@ -80,7 +80,7 @@ Generated automatically by `scripts/release-notes.sh` from conventional-commit s
 
 - address review feedback for parallel tests
 
-**Full Changelog**: https://github.com/kevsmir02/terax-ai/compare/v0.8.8...v0.8.9
+**Full Changelog**: https://github.com/kevsmir02/puhon/compare/v0.8.8...v0.8.9
 ```
 
 ### Categorization

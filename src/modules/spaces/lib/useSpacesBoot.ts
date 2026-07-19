@@ -144,7 +144,7 @@ export function useSpacesBoot({
         const activeTab = inActive[idx] ?? inActive[0] ?? withRestored[0];
         replaceTabs(withRestored, activeTab.id);
       } catch (e) {
-        console.error("[terax] spaces boot failed:", e);
+        console.error("[puhon] spaces boot failed:", e);
       } finally {
         markBooted();
       }

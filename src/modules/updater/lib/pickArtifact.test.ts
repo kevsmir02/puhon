@@ -8,16 +8,16 @@ const asset = (name: string, url = `https://github.com/x/${name}`): GhAsset => (
 
 describe("pickArtifactUrl", () => {
   it("picks the x86_64 rpm for Dnf on x86_64", () => {
-    const assets = [asset("Terax-0.9.0-1.x86_64.rpm"), asset("Terax-0.9.0-1.aarch64.rpm")];
+    const assets = [asset("Puhon-0.9.0-1.x86_64.rpm"), asset("Puhon-0.9.0-1.aarch64.rpm")];
     expect(pickArtifactUrl(assets, "dnf", "x86_64")).toBe(
-      "https://github.com/x/Terax-0.9.0-1.x86_64.rpm",
+      "https://github.com/x/Puhon-0.9.0-1.x86_64.rpm",
     );
   });
 
   it("picks the aarch64 deb for Apt on arm64", () => {
-    const assets = [asset("terax_0.9.0_amd64.deb"), asset("terax_0.9.0_arm64.deb")];
+    const assets = [asset("puhon_0.9.0_amd64.deb"), asset("puhon_0.9.0_arm64.deb")];
     expect(pickArtifactUrl(assets, "apt", "aarch64")).toBe(
-      "https://github.com/x/terax_0.9.0_arm64.deb",
+      "https://github.com/x/puhon_0.9.0_arm64.deb",
     );
   });
 

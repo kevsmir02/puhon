@@ -4,7 +4,7 @@ import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type ThemePref = "system" | "light" | "dark";
 
-export const DEFAULT_THEME_ID = "terax-default";
+export const DEFAULT_THEME_ID = "puhon-default";
 
 export type BackgroundKind = "none" | "image";
 
@@ -144,7 +144,7 @@ export type EditorFormatter =
   | "zigfmt"
   | "custom";
 
-const STORE_PATH = "terax-settings.json";
+const STORE_PATH = "puhon-settings.json";
 const KEY_THEME = "theme";
 const KEY_THEME_ID = "themeId";
 const KEY_BG_KIND = "backgroundKind";
@@ -244,7 +244,7 @@ const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
 // page lives in a separate webview, so writes there never reach the main
 // window's subscribers. Mirror every setter through a Tauri event so any
 // window can listen.
-const PREFS_CHANGED_EVENT = "terax://prefs-changed";
+const PREFS_CHANGED_EVENT = "puhon://prefs-changed";
 
 async function writePref<T>(key: string, value: T): Promise<void> {
   await store.set(key, value);

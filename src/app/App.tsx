@@ -448,7 +448,7 @@ export default function App() {
       for (const path of paths) handleOpenFile(path, true);
     };
     (async () => {
-      unlisten = await listen<string[]>("terax:open-file", (e) => {
+      unlisten = await listen<string[]>("puhon:open-file", (e) => {
         openAll(e.payload);
       });
       openAll(await consumeLaunchFiles());
@@ -1019,7 +1019,7 @@ export default function App() {
                 <div className="flex h-full min-h-0 flex-col border-r border-border/60 bg-card">
                   <div
                     key={sidebarView}
-                    className="min-h-0 flex-1 terax-panel-in"
+                    className="min-h-0 flex-1 puhon-panel-in"
                   >
                     {sidebarView === "explorer" ? (
                       <FileExplorer

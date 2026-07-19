@@ -44,13 +44,13 @@ fn command_succeeds(program: &str, args: &[&str]) -> bool {
         .unwrap_or(false)
 }
 
-/// Terax registers as `Terax` under rpm and `terax` under dpkg (productName,
+/// Puhon registers as `Puhon` under rpm and `puhon` under dpkg (productName,
 /// dpkg lowercases). Confirm exact casing at first release.
 fn rpm_registered() -> bool {
-    command_succeeds("rpm", &["-q", "Terax"])
+    command_succeeds("rpm", &["-q", "Puhon"])
 }
 fn deb_registered() -> bool {
-    command_succeeds("dpkg", &["-s", "terax"])
+    command_succeeds("dpkg", &["-s", "puhon"])
 }
 
 #[tauri::command]
@@ -72,7 +72,7 @@ pub enum DownloadEvent {
 /// Controlled download root. Never user-supplied.
 pub fn update_dir() -> PathBuf {
     let base = dirs::cache_dir().unwrap_or_else(std::env::temp_dir);
-    base.join("terax").join("updates")
+    base.join("puhon").join("updates")
 }
 
 pub fn validate_download_url(raw: &str) -> Result<String, String> {
@@ -117,7 +117,7 @@ pub async fn updater_download(
     let total = resp.content_length();
     let _ = on_event.send(DownloadEvent::Started { content_length: total });
 
-    let path = update_dir().join(format!("terax-{}.pkg", std::process::id()));
+    let path = update_dir().join(format!("puhon-{}.pkg", std::process::id()));
     let mut file = std::fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
     let mut stream = resp.bytes_stream();
     let mut downloaded: u64 = 0;
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn accepts_github_release_url() {
         assert!(validate_download_url(
-            "https://github.com/kevsmir02/terax-ai/releases/download/v0.9.0/Terax-0.9.0.AppImage",
+            "https://github.com/kevsmir02/puhon/releases/download/v0.9.0/Puhon-0.9.0.AppImage",
         )
         .is_ok());
     }
@@ -243,7 +243,7 @@ mod tests {
     fn is_within_rejects_traversal() {
         let dir = tempfile::tempdir().unwrap();
         let dir = dir.path();
-        assert!(is_within(dir, &dir.join("terax-0.9.0.rpm")));
+        assert!(is_within(dir, &dir.join("puhon-0.9.0.rpm")));
         assert!(!is_within(dir, &std::path::PathBuf::from("/etc/passwd")));
         assert!(!is_within(dir, &dir.join("..").join("etc").join("passwd")));
     }

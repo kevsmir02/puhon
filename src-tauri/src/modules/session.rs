@@ -28,7 +28,7 @@ pub struct SessionData {
 fn sessions_dir() -> PathBuf {
     dirs::cache_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("terax")
+        .join("puhon")
         .join("sessions")
 }
 
@@ -178,7 +178,7 @@ mod tests {
             .map(|d| d.as_nanos())
             .unwrap_or(0);
         std::env::temp_dir()
-            .join("terax-session-tests")
+            .join("puhon-session-tests")
             .join(format!("{label}-{nanos}"))
     }
 

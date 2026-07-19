@@ -1,20 +1,20 @@
 # Roadmap
 
-Terax direction: what's shipped, what's coming, what's deliberately out of scope, and why this fork exists.
+Puhon direction: what's shipped, what's coming, what's deliberately out of scope, and why this fork exists.
 
-This file is updated as direction evolves. For day-to-day work, see [GitHub Issues](https://github.com/kevsmir02/terax-ai/issues).
+This file is updated as direction evolves. For day-to-day work, see [GitHub Issues](https://github.com/kevsmir02/puhon/issues).
 
-## What Terax is
+## What Puhon is
 
-Terax is a lightweight terminal workspace built to **host the coding-agent CLIs you already use** (Codex, OpenCode, Pi, Claude Code, and similar) alongside the chrome those agents need: a file explorer to watch what they touch, a web preview to see the servers they spin up, source control to review their commits, and an editor for your own edits. Run the agent in the terminal; stay in one app.
+Puhon is a lightweight terminal workspace built to **host the coding-agent CLIs you already use** (Codex, OpenCode, Pi, Claude Code, and similar) alongside the chrome those agents need: a file explorer to watch what they touch, a web preview to see the servers they spin up, source control to review their commits, and an editor for your own edits. Run the agent in the terminal; stay in one app.
 
 Under 8 MB on disk. No telemetry, no accounts, no built-in AI. Cross-platform; releases currently cut Linux first.
 
 The product is opinionated: agent-host first, terminal-first, lightweight always.
 
-## What Terax is not
+## What Puhon is not
 
-- **Not an AI product.** Terax runs external coding agents; it does not ship its own chat, models, providers, or API-key management. Mature CLIs (Codex, OpenCode, Pi) do that better, so the built-in AI subsystem was removed.
+- **Not an AI product.** Puhon runs external coding agents; it does not ship its own chat, models, providers, or API-key management. Mature CLIs (Codex, OpenCode, Pi) do that better, so the built-in AI subsystem was removed.
 - **Not a full IDE replacement.** Heavy IDE features that overlap with VS Code / Cursor / Zed are out of scope.
 - **Not a browser.** Web preview exists for the local dev servers agents start, plus lightweight doc viewing.
 - **Not a one-size-fits-all shell.** The goal is "best host for coding-agent CLIs," not "terminal with extras."
@@ -23,7 +23,7 @@ The product is opinionated: agent-host first, terminal-first, lightweight always
 
 The themes below frame every scope decision.
 
-1. **Agent-host first.** Terax exists to make running external coding-agent CLIs better than running them in a bare terminal. If a change does not serve that, it is deprioritized.
+1. **Agent-host first.** Puhon exists to make running external coding-agent CLIs better than running them in a bare terminal. If a change does not serve that, it is deprioritized.
 2. **Lightweight always.** 7-8 MB binary. Every dependency justified. Renderer slots pooled, scrollback bounded.
 3. **Terminal-first.** xterm.js correctness, PTY fidelity, and full-screen TUI compatibility are non-negotiable. Agent CLIs are demanding TUIs; rendering them faithfully is the make-or-break surface.
 4. **Security by default.** Path guards, OSC trust, IPC sandboxing. Defaults safe out of the box.
@@ -91,19 +91,19 @@ The themes below frame every scope decision.
 ### Longer horizon
 
 - [ ] **Image and screenshot input into agent prompts.** Agents accept image input; terminals do not. Scope a design for pasting or dragging an image into the terminal and attaching it to the running agent's prompt.
-- [ ] **SSH support.** Run agents and dev servers on a remote box, controlled from local Terax. The agent-awareness layer should work identically over the SSH PTY since it reads the same OSC stream. PTY auth and known_hosts first; SFTP and port forwarding later.
+- [ ] **SSH support.** Run agents and dev servers on a remote box, controlled from local Puhon. The agent-awareness layer should work identically over the SSH PTY since it reads the same OSC stream. PTY auth and known_hosts first; SFTP and port forwarding later.
 - [ ] **Release automation.** CHANGELOG generation, version bump, tag flow.
 - [ ] **Selective TS-to-Rust migration**, only where a profiler shows measurable wins in the agent byte path (parsing, buffering, serialization). No speculative rewrites.
 
 ## Out of scope
 
-Categories that will not be built into Terax. Feature requests in these categories will be closed.
+Categories that will not be built into Puhon. Feature requests in these categories will be closed.
 
-- **Built-in AI.** Chat, models, providers, API-key management, autocomplete models. Terax hosts external coding agents; it does not compete with them.
+- **Built-in AI.** Chat, models, providers, API-key management, autocomplete models. Puhon hosts external coding agents; it does not compete with them.
 - **Heavy IDE features.** Full language-server integration, integrated debuggers, refactoring engines, project-wide search at IDE scale. Use a real editor for those.
-- **Notebook and document workspaces.** Anything that turns Terax into a document host rather than a terminal.
+- **Notebook and document workspaces.** Anything that turns Puhon into a document host rather than a terminal.
 - **Package manager and toolchain UIs.** Use `npm`, `pip`, `cargo` and friends in the terminal directly.
 - **Full web browser features.** Preview pane stays scoped to local dev servers and lightweight doc viewing. No navigation history, no bookmarks, no dev tools.
-- **Telemetry, analytics, accounts.** Terax stays offline-respectful.
+- **Telemetry, analytics, accounts.** Puhon stays offline-respectful.
 - **Extension marketplaces at IDE scale.** Arbitrary UI or behavior extensions will not.
-- **Third-party subscription session bridges.** Forwarding cloud subscription auth (provider-managed login sessions) through Terax is not technically feasible for third-party clients.
+- **Third-party subscription session bridges.** Forwarding cloud subscription auth (provider-managed login sessions) through Puhon is not technically feasible for third-party clients.

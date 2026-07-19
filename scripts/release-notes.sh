@@ -22,7 +22,7 @@
 set -euo pipefail
 
 TAG="${1:?usage: scripts/release-notes.sh <tag>}"
-REPO="kevsmir02/terax-ai"
+REPO="kevsmir02/puhon"
 
 # Nearest tag reachable from the parent of $TAG (i.e. the previous release).
 PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"

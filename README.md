@@ -1,13 +1,16 @@
 <div align="center">
-  <img src="public/logo.png" width="96" height="96" alt="Terax" />
-  <h1>Terax</h1>
+  <img src="public/logo.png" width="96" height="96" alt="Puhon" />
+  <h1>Puhon</h1>
 
   <p><strong>A terminal workspace for coding-agent CLIs.</strong></p>
+  <p><em>puhon</em>, Filipino (Cebuano) for "hopefully."</p>
 </div>
 
 ---
 
 Lightweight terminal workspace built on Tauri 2 + Rust and React 19, designed to host the coding-agent CLIs you already use (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor, so you stay in one app. Native PTY backend with WebGL renderer. No telemetry, no accounts, no built-in AI.
+
+The name is the Cebuano word for "hopefully," which is exactly what you do when you hand a task to an agent: launch it, and *puhon* it gets it right.
 
 ## Features
 
@@ -49,7 +52,7 @@ Lightweight terminal workspace built on Tauri 2 + Rust and React 19, designed to
 
 Releases currently ship Linux binaries (AppImage, .deb, .rpm). macOS and Windows build and run from source but are not in the release pipeline yet.
 
-Download Linux builds from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
+Download Linux builds from [Releases](https://github.com/kevsmir02/puhon/releases/latest).
 
 ### Windows
 
@@ -58,8 +61,8 @@ Download Linux builds from [Releases](https://github.com/kevsmir02/terax-ai/rele
 
 ### Linux
 
-- **.deb** (Debian, Ubuntu, Mint) and **.rpm** (Fedora, RHEL, openSUSE): download from [Releases](https://github.com/kevsmir02/terax-ai/releases/latest).
-- **AppImage:** needs FUSE. Without it: `./Terax_*.AppImage --appimage-extract-and-run`. On Wayland with rendering issues, try `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+- **.deb** (Debian, Ubuntu, Mint) and **.rpm** (Fedora, RHEL, openSUSE): download from [Releases](https://github.com/kevsmir02/puhon/releases/latest).
+- **AppImage:** needs FUSE. Without it: `./Puhon_*.AppImage --appimage-extract-and-run`. On Wayland with rendering issues, try `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
 
 AUR and Nix are not supported install paths for this fork.
 

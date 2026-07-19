@@ -1,6 +1,6 @@
-# Terax contributor docs
+# Puhon contributor docs
 
-Long-form guides that elaborate on `TERAX.md`. If anything here conflicts with `TERAX.md`, `TERAX.md` wins.
+Long-form guides that elaborate on `PUHON.md`. If anything here conflicts with `PUHON.md`, `PUHON.md` wins.
 
 ## Architecture
 

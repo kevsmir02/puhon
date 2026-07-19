@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Terax",
+  "productName": "Puhon",
   "version": "0.8.9",
-  "identifier": "app.crynta.terax",
+  "identifier": "app.kevsmir02.puhon",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
   "app": {
     "windows": [
       {
-        "title": "Terax",
+        "title": "Puhon",
         "width": 800,
         "height": 600,
         "minWidth": 420,
@@ -36,9 +36,9 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "copyright": "Copyright 2026 Crynta",
+    "copyright": "Copyright 2026 kevsmir02",
     "license": "Apache-2.0",
-    "publisher": "Crynta",
+    "publisher": "kevsmir02",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -84,10 +84,10 @@
     },
     "category": "DeveloperTool",
     "shortDescription": "Terminal workspace for coding-agent CLIs",
-    "longDescription": "Terax is a lightweight terminal workspace for hosting coding-agent CLIs (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor. Tauri 2 + Rust backend, React 19 + xterm.js client. No telemetry, no built-in AI.",
+    "longDescription": "Puhon is a lightweight terminal workspace for hosting coding-agent CLIs (Codex, OpenCode, Pi, Claude Code) alongside a file explorer, web preview, source control, and editor. Tauri 2 + Rust backend, React 19 + xterm.js client. No telemetry, no built-in AI.",
     "fileAssociations": [
       {
-        "name": "Terax Document",
+        "name": "Puhon Document",
         "role": "Editor",
         "mimeType": "text/plain",
         "ext": [
@@ -108,7 +108,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcwQ0M5QjRBRjAwQzc4QkUKUldTK2VBendTcHZNY0FweHNsZ1Z6cHBweGo3U2hXdHl6dmdDRll2Vzg1cWRZYS90Z2VKU3g1MVkK",
       "endpoints": [
-        "https://github.com/kevsmir02/terax-ai/releases/latest/download/latest.json"
+        "https://github.com/kevsmir02/puhon/releases/latest/download/latest.json"
       ]
     }
   }
