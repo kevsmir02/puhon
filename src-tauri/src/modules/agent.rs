@@ -107,6 +107,64 @@ fn status_needle(spec: &AgentSpec, event: &str) -> String {
     }
 }
 
+fn is_ours(group: &Value) -> bool {
+    group
+        .get("hooks")
+        .and_then(Value::as_array)
+        .is_some_and(|hs| {
+            hs.iter().any(|h| {
+                h.get("command")
+                    .and_then(Value::as_str)
+                    .is_some_and(|c| OWNED_MARKERS.iter().any(|m| c.contains(m)))
+            })
+        })
+}
+
+fn is_empty_group(group: &Value) -> bool {
+    group
+        .get("hooks")
+        .and_then(Value::as_array)
+        .is_none_or(|hs| hs.is_empty())
+}
+
+fn merge_hooks(mut root: Value, spec: &AgentSpec) -> Value {
+    if !root.is_object() {
+        root = json!({});
+    }
+    let obj = root.as_object_mut().unwrap();
+    let hooks = obj.entry("hooks").or_insert_with(|| json!({}));
+    if !hooks.is_object() {
+        *hooks = json!({});
+    }
+    let hooks = hooks.as_object_mut().unwrap();
+
+    for (event, marker) in spec.events {
+        let arr = hooks.entry(*event).or_insert_with(|| json!([]));
+        if !arr.is_array() {
+            *arr = json!([]);
+        }
+        let arr = arr.as_array_mut().unwrap();
+        arr.retain(|group| !is_ours(group) && !is_empty_group(group));
+        let mut group = json!({
+            "hooks": [ { "type": "command", "command": hook_command(spec, marker) } ]
+        });
+        if spec.matcher {
+            group["matcher"] = json!("*");
+        }
+        arr.push(group);
+    }
+    root
+}
+
+fn existing_config(contents: Option<&str>, path: &std::path::Path) -> Result<Value, String> {
+    match contents {
+        Some(s) if !s.trim().is_empty() => serde_json::from_str::<Value>(s).map_err(|e| {
+            format!("{} is not valid JSON ({e}); refusing to overwrite", path.display())
+        }),
+        _ => Ok(json!({})),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,4 +228,56 @@ mod tests {
         let cmd = hook_command(s, "finished");
         assert!(cmd.contains(&needle), "needle {needle} not in {cmd}");
     }
+
+    fn hook_count(root: &Value, event: &str) -> usize {
+        root["hooks"][event].as_array().map_or(0, Vec::len)
+    }
+
+    #[test]
+    fn claude_adds_all_event_hooks_to_empty_config() {
+        let out = merge_hooks(json!({}), find("claude").unwrap());
+        assert_eq!(hook_count(&out, "UserPromptSubmit"), 1);
+        assert_eq!(hook_count(&out, "Notification"), 1);
+        assert_eq!(hook_count(&out, "Stop"), 1);
+        assert!(command(&out, "Notification", 0).contains("notify;Puhon;attention"));
+        assert!(command(&out, "Stop", 0).contains("terminalSequence"));
+    }
+
+    #[test]
+    fn merge_is_idempotent_per_agent() {
+        for agent in ["claude", "codex", "antigravity"] {
+            let s = find(agent).unwrap();
+            let once = merge_hooks(json!({}), s);
+            let twice = merge_hooks(once.clone(), s);
+            assert_eq!(once, twice, "{agent} not idempotent");
+        }
+    }
+
+    #[test]
+    fn merge_preserves_foreign_hooks_and_prunes_empties() {
+        let foreign = json!({
+            "hooks": {
+                "UserPromptSubmit": [
+                    { "hooks": [ { "type": "command", "command": "echo user-hook" } ] }
+                ]
+            }
+        });
+        let out = merge_hooks(foreign, find("claude").unwrap());
+        assert_eq!(hook_count(&out, "UserPromptSubmit"), 2);
+    }
+
+    #[test]
+    fn antigravity_uses_matcher() {
+        let out = merge_hooks(json!({}), find("antigravity").unwrap());
+        assert_eq!(out["hooks"]["BeforeAgent"][0]["matcher"], "*");
+    }
+
+    #[test]
+    fn existing_config_rejects_invalid_json() {
+        let p = std::path::Path::new("/x");
+        assert!(existing_config(Some("not json"), p).is_err());
+        assert!(existing_config(Some(""), p).is_ok());
+        assert!(existing_config(None, p).is_ok());
+    }
 }
+
