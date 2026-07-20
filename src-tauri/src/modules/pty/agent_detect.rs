@@ -193,8 +193,46 @@ impl AgentDetector {
         self.armed = false;
         self.status = Status::Working;
     }
-    fn handle_osc777<F: FnMut(Transition)>(&mut self, _pt: &[u8], _emit: &mut F) {}
-    fn generic_attention<F: FnMut(Transition)>(&mut self, _emit: &mut F) {}
+    fn handle_osc777<F: FnMut(Transition)>(&mut self, pt: &[u8], emit: &mut F) {
+        if let Some(tail) = pt.strip_prefix(PUHON_MARKER) {
+            let (agent, event) = match tail.iter().position(|&c| c == b';') {
+                Some(i) => {
+                    let Ok(name) = std::str::from_utf8(&tail[..i]) else { return };
+                    if !self.agents.iter().any(|a| a == name) {
+                        return;
+                    }
+                    (name, &tail[i + 1..])
+                }
+                None => ("claude", tail),
+            };
+            match event {
+                b"working" => {
+                    self.ensure_armed(agent, emit);
+                    self.set_working(emit);
+                }
+                b"attention" => {
+                    self.ensure_armed(agent, emit);
+                    self.status = Status::Waiting;
+                    emit(Transition::Attention);
+                }
+                b"finished" => {
+                    self.ensure_armed(agent, emit);
+                    self.status = Status::Waiting;
+                    emit(Transition::Finished);
+                }
+                _ => {}
+            }
+            return;
+        }
+        self.generic_attention(emit);
+    }
+
+    fn generic_attention<F: FnMut(Transition)>(&mut self, emit: &mut F) {
+        if self.armed {
+            self.status = Status::Waiting;
+            emit(Transition::Attention);
+        }
+    }
 
     fn match_agent(&self, cmd: &[u8]) -> Option<String> {
         let cmd = std::str::from_utf8(cmd).ok()?;
@@ -225,6 +263,7 @@ const BEL: u8 = 0x07;
 const OSC_INTRO: u8 = b']';
 const ST_FINAL: u8 = b'\\';
 const OSC_MAX: usize = 2048;
+const PUHON_MARKER: &[u8] = b"notify;Puhon;";
 
 #[allow(dead_code)]
 const DEFAULT_AGENTS: &[&str] = &["claude", "codex", "pi", "opencode", "antigravity"];
@@ -350,5 +389,66 @@ mod tests {
         let mut d = AgentDetector::new();
         run(&mut d, &osc("133;C;claude"));
         assert!(run(&mut d, &osc("133;C;codex")).is_empty());
+    }
+
+    #[test]
+    fn puhon_marker_drives_status() {
+        let mut d = AgentDetector::new();
+        run(&mut d, &osc("133;C;claude"));
+        assert_eq!(run(&mut d, &osc("777;notify;Puhon;attention")), vec![Transition::Attention]);
+        assert_eq!(run(&mut d, &osc("777;notify;Puhon;working")), vec![Transition::Working]);
+        assert!(run(&mut d, &osc("777;notify;Puhon;working")).is_empty());
+        assert_eq!(run(&mut d, &osc("777;notify;Puhon;finished")), vec![Transition::Finished]);
+    }
+
+    #[test]
+    fn three_field_marker_defaults_agent_to_claude() {
+        let mut d = AgentDetector::new();
+        assert_eq!(
+            run(&mut d, &osc("777;notify;Puhon;attention")),
+            vec![started("claude"), Transition::Attention]
+        );
+    }
+
+    #[test]
+    fn four_field_marker_self_arms_named_agent() {
+        let mut d = AgentDetector::new();
+        assert_eq!(run(&mut d, &osc("777;notify;Puhon;codex;working")), vec![started("codex")]);
+        let mut g = AgentDetector::new();
+        assert_eq!(
+            run(&mut g, &osc("777;notify;Puhon;antigravity;finished")),
+            vec![started("antigravity"), Transition::Finished]
+        );
+    }
+
+    #[test]
+    fn four_field_marker_rejects_unknown_agent() {
+        let mut d = AgentDetector::new();
+        assert!(run(&mut d, &osc("777;notify;Puhon;evil;attention")).is_empty());
+        assert_eq!(
+            run(&mut d, &osc("777;notify;Puhon;opencode;attention")),
+            vec![started("opencode"), Transition::Attention]
+        );
+    }
+
+    #[test]
+    fn generic_attention_only_when_armed() {
+        let mut d = AgentDetector::new();
+        assert!(run(&mut d, &osc("777;notify;Other;ready")).is_empty());
+        assert!(run(&mut d, &osc("9;needs you")).is_empty());
+        run(&mut d, &osc("133;C;codex"));
+        assert_eq!(run(&mut d, &osc("777;notify;Codex;ready")), vec![Transition::Attention]);
+        assert_eq!(run(&mut d, &osc("9;needs you")), vec![Transition::Attention]);
+        assert!(run(&mut d, &osc("9;4;1;50")).is_empty());
+    }
+
+    #[test]
+    fn bel_inside_title_osc_is_not_attention() {
+        let mut d = AgentDetector::new();
+        run(&mut d, &osc("133;C;claude"));
+        let mut seq = vec![0x1b, b']'];
+        seq.extend_from_slice(b"0;set title");
+        seq.push(BEL);
+        assert!(run(&mut d, &seq).is_empty());
     }
 }
