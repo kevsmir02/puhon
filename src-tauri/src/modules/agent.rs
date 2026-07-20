@@ -76,6 +76,37 @@ fn settings_path(spec: &AgentSpec) -> Result<std::path::PathBuf, String> {
     home_path(spec.dir, spec.file)
 }
 
+fn hook_command(spec: &AgentSpec, event: &str) -> String {
+    match spec.delivery {
+        Delivery::TerminalSequence => format!(
+            r#"[ -n "$PUHON_TERMINAL" ] && printf '{{"terminalSequence":"\\u001b]777;notify;Puhon;{event}\\u0007"}}' || true"#
+        ),
+        Delivery::Osc => osc_command(spec.agent, event),
+    }
+}
+
+#[cfg(unix)]
+fn osc_command(agent: &str, event: &str) -> String {
+    format!(
+        r#"[ -n "$PUHON_TERMINAL" ] && printf '\033]777;notify;Puhon;{agent};{event}\007' > /dev/tty; printf '{{}}'"#
+    )
+}
+
+#[cfg(windows)]
+fn osc_command(agent: &str, event: &str) -> String {
+    let exe = std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| "puhon.exe".to_string());
+    format!(r#""{exe}" __puhon_notify {agent} {event}"#)
+}
+
+fn status_needle(spec: &AgentSpec, event: &str) -> String {
+    match spec.delivery {
+        Delivery::TerminalSequence => format!("notify;Puhon;{event}"),
+        Delivery::Osc => format!("notify;Puhon;{};{event}", spec.agent),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +136,38 @@ mod tests {
         assert!(s.matcher);
         assert_eq!(s.dir, ".gemini");
         assert_eq!(s.file, "settings.json");
+    }
+
+    fn command(root: &Value, event: &str, idx: usize) -> String {
+        root["hooks"][event][idx]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    #[test]
+    fn claude_command_uses_terminal_sequence() {
+        let cmd = hook_command(find("claude").unwrap(), "finished");
+        assert!(cmd.contains("terminalSequence"));
+        assert!(cmd.contains("notify;Puhon;finished"));
+        assert!(!cmd.contains("/dev/tty"));
+        assert!(cmd.contains("$PUHON_TERMINAL"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn osc_command_unix_writes_four_field_to_dev_tty() {
+        let cmd = osc_command("codex", "finished");
+        assert!(cmd.contains("notify;Puhon;codex;finished"));
+        assert!(cmd.contains("> /dev/tty"));
+        assert!(cmd.contains("printf '{}'"));
+    }
+
+    #[test]
+    fn status_needle_matches_emitted_command() {
+        let s = find("codex").unwrap();
+        let needle = status_needle(s, "finished");
+        let cmd = hook_command(s, "finished");
+        assert!(cmd.contains(&needle), "needle {needle} not in {cmd}");
     }
 }
