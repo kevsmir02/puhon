@@ -157,6 +157,21 @@ async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    {
+        let args: Vec<String> = std::env::args().collect();
+        if args.get(1).map(String::as_str) == Some("__puhon_notify") {
+            if let (Some(agent), Some(event)) = (args.get(2), args.get(3)) {
+                crate::modules::agent::emit_conout_marker(agent, event);
+            }
+            use std::io::Write;
+            let mut out = std::io::stdout();
+            let _ = out.write_all(b"{}");
+            let _ = out.flush();
+            std::process::exit(0);
+        }
+    }
+
     let launch = parse_launch_target();
     let cli_dir = launch.dir.clone();
     workspace::init_launch_cwd(cli_dir.as_deref());
@@ -294,6 +309,8 @@ pub fn run() {
             history::history_commands,
             history::history_record,
             history::history_list,
+            crate::modules::agent::agent_enable_hooks,
+            crate::modules::agent::agent_hooks_status,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

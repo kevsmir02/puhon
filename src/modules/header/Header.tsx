@@ -46,6 +46,7 @@ type Props = {
   spaceSwitcher: ReactNode;
   searchTarget: SearchTarget;
   searchRef: RefObject<SearchInlineHandle | null>;
+  notificationBell?: ReactNode;
 };
 
 const COMPACT_WIDTH = 720;
@@ -71,6 +72,7 @@ export function Header({
   spaceSwitcher,
   searchTarget,
   searchRef,
+  notificationBell,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -159,6 +161,7 @@ export function Header({
 
       <SearchInline ref={searchRef} target={searchTarget} compact={compact} />
 
+      {notificationBell}
       {settingsButton}
 
       {USE_CUSTOM_WINDOW_CONTROLS && (

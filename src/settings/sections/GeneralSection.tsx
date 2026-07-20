@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import type { ThemePref } from "@/modules/settings/store";
 import {
+  setAgentNotifications,
   setAutostart,
   setDefaultWorkspaceEnv,
   setExplorerGitDecorations,
@@ -100,6 +101,7 @@ export function GeneralSection() {
   const terminalFontSize = usePreferencesStore((s) => s.terminalFontSize);
   const terminalScrollback = usePreferencesStore((s) => s.terminalScrollback);
   const zoomLevel = usePreferencesStore((s) => s.zoomLevel);
+  const agentNotifications = usePreferencesStore((s) => s.agentNotifications);
 
   useEffect(() => {
     let alive = true;
@@ -426,6 +428,19 @@ export function GeneralSection() {
               ))}
             </SelectContent>
           </Select>
+        </SettingRow>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Notifications</Label>
+        <SettingRow
+          title="Agent notifications"
+          description="Bell and OS notifications when an agent needs input or finishes in a hidden tab."
+        >
+          <Switch
+            checked={agentNotifications}
+            onCheckedChange={(v) => void setAgentNotifications(v)}
+          />
         </SettingRow>
       </div>
 

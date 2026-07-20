@@ -131,6 +131,7 @@ export type Preferences = {
   editorFormatterByLang: Record<string, EditorFormatter>;
   /** Shell template for the "custom" formatter; {file} is the quoted path. */
   editorCustomFormatCommand: string;
+  agentNotifications: boolean;
 };
 
 export type EditorFormatter =
@@ -179,6 +180,7 @@ const KEY_EDITOR_FORMAT_ON_SAVE = "editorFormatOnSave";
 const KEY_EDITOR_FORMATTER = "editorFormatter";
 const KEY_EDITOR_FORMATTER_BY_LANG = "editorFormatterByLang";
 const KEY_EDITOR_CUSTOM_FORMAT_COMMAND = "editorCustomFormatCommand";
+const KEY_AGENT_NOTIFICATIONS = "agentNotifications";
 
 export const TERMINAL_FONT_SIZE_DEFAULT = 14;
 export const TERMINAL_FONT_SIZE_MIN = 8;
@@ -236,6 +238,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   editorFormatter: "prettier",
   editorFormatterByLang: {},
   editorCustomFormatCommand: "",
+  agentNotifications: true,
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -351,6 +354,9 @@ export async function loadPreferences(): Promise<Preferences> {
     editorCustomFormatCommand:
       get<string>(KEY_EDITOR_CUSTOM_FORMAT_COMMAND) ??
       DEFAULT_PREFERENCES.editorCustomFormatCommand,
+    agentNotifications:
+      get<boolean>(KEY_AGENT_NOTIFICATIONS) ??
+      DEFAULT_PREFERENCES.agentNotifications,
   };
 }
 
@@ -559,6 +565,11 @@ export async function resetShortcuts(): Promise<void> {
   await writePref(KEY_SHORTCUTS, DEFAULT_PREFERENCES.shortcuts);
 }
 
+export async function setAgentNotifications(value: boolean): Promise<void> {
+  await writePref(KEY_AGENT_NOTIFICATIONS, value);
+}
+
+
 export type PrefKey = keyof Preferences;
 
 /** Subscribe to changes from any window (settings → main). */
@@ -599,6 +610,7 @@ export async function onPreferencesChange(
     [KEY_EDITOR_FORMATTER]: "editorFormatter",
     [KEY_EDITOR_FORMATTER_BY_LANG]: "editorFormatterByLang",
     [KEY_EDITOR_CUSTOM_FORMAT_COMMAND]: "editorCustomFormatCommand",
+    [KEY_AGENT_NOTIFICATIONS]: "agentNotifications",
   };
   // Same-process writes still fire onChange immediately; cross-window writes
   // arrive via the Tauri event emitted by writePref().

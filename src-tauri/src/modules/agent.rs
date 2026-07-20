@@ -1,0 +1,634 @@
+#![allow(dead_code, unused_imports)]
+
+use serde_json::{json, Value};
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Delivery {
+    TerminalSequence,
+    Osc,
+}
+
+struct AgentSpec {
+    agent: &'static str,
+    dir: &'static str,
+    file: &'static str,
+    events: &'static [(&'static str, &'static str)],
+    matcher: bool,
+    delivery: Delivery,
+}
+
+const AGENTS: &[AgentSpec] = &[
+    AgentSpec {
+        agent: "claude",
+        dir: ".claude",
+        file: "settings.json",
+        events: &[
+            ("UserPromptSubmit", "working"),
+            ("Notification", "attention"),
+            ("Stop", "finished"),
+        ],
+        matcher: false,
+        delivery: Delivery::TerminalSequence,
+    },
+    AgentSpec {
+        agent: "codex",
+        dir: ".codex",
+        file: "hooks.json",
+        events: &[
+            ("UserPromptSubmit", "working"),
+            ("PermissionRequest", "attention"),
+            ("Stop", "finished"),
+        ],
+        matcher: false,
+        delivery: Delivery::Osc,
+    },
+    AgentSpec {
+        agent: "antigravity",
+        dir: ".gemini",
+        file: "settings.json",
+        events: &[
+            ("BeforeAgent", "working"),
+            ("Notification", "attention"),
+            ("AfterAgent", "finished"),
+        ],
+        matcher: true,
+        delivery: Delivery::Osc,
+    },
+];
+
+const OWNED_MARKERS: &[&str] = &["notify;Puhon;", "puhon;notify", "__puhon_notify"];
+
+const PI_EXTENSION_DIR: &str = ".pi/agent/extensions";
+const PI_EXTENSION_FILE: &str = "puhon-notifications.ts";
+const PI_EXTENSION_MARKER: &str = "puhon-pi-notifications-v1";
+const PI_STATUS_NEEDLES: &[&str] = &[
+    PI_EXTENSION_MARKER,
+    "agent_start",
+    "agent_settled",
+    "notify;Puhon;pi;${event}",
+    "emit(\"working\")",
+    "emit(\"finished\")",
+];
+const PI_EXTENSION: &str = r#"// puhon-pi-notifications-v1
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  const emit = (event: "working" | "finished") => {
+    if (process.env.PUHON_TERMINAL) {
+      process.stdout.write(`\u001b]777;notify;Puhon;pi;${event}\u0007`);
+    }
+  };
+
+  pi.on("agent_start", () => emit("working"));
+  pi.on("agent_settled", () => emit("finished"));
+}
+"#;
+
+fn find(agent: &str) -> Result<&'static AgentSpec, String> {
+    AGENTS
+        .iter()
+        .find(|s| s.agent == agent)
+        .ok_or_else(|| format!("unknown agent {agent}"))
+}
+
+fn home_path(dir: &str, file: &str) -> Result<std::path::PathBuf, String> {
+    Ok(dirs::home_dir()
+        .ok_or_else(|| "could not resolve home dir".to_string())?
+        .join(dir)
+        .join(file))
+}
+
+fn settings_path(spec: &AgentSpec) -> Result<std::path::PathBuf, String> {
+    home_path(spec.dir, spec.file)
+}
+
+fn hook_command(spec: &AgentSpec, event: &str) -> String {
+    match spec.delivery {
+        Delivery::TerminalSequence => format!(
+            r#"[ -n "$PUHON_TERMINAL" ] && printf '{{"terminalSequence":"\\u001b]777;notify;Puhon;{event}\\u0007"}}' || true"#
+        ),
+        Delivery::Osc => osc_command(spec.agent, event),
+    }
+}
+
+#[cfg(unix)]
+fn osc_command(agent: &str, event: &str) -> String {
+    format!(
+        r#"[ -n "$PUHON_TERMINAL" ] && printf '\033]777;notify;Puhon;{agent};{event}\007' > /dev/tty; printf '{{}}'"#
+    )
+}
+
+#[cfg(windows)]
+fn osc_command(agent: &str, event: &str) -> String {
+    let exe = std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| "puhon.exe".to_string());
+    format!(r#""{exe}" __puhon_notify {agent} {event}"#)
+}
+
+fn status_needle(spec: &AgentSpec, event: &str) -> String {
+    match spec.delivery {
+        Delivery::TerminalSequence => format!("notify;Puhon;{event}"),
+        Delivery::Osc => format!("notify;Puhon;{};{event}", spec.agent),
+    }
+}
+
+fn is_ours(group: &Value) -> bool {
+    group
+        .get("hooks")
+        .and_then(Value::as_array)
+        .is_some_and(|hs| {
+            hs.iter().any(|h| {
+                h.get("command")
+                    .and_then(Value::as_str)
+                    .is_some_and(|c| OWNED_MARKERS.iter().any(|m| c.contains(m)))
+            })
+        })
+}
+
+fn is_empty_group(group: &Value) -> bool {
+    group
+        .get("hooks")
+        .and_then(Value::as_array)
+        .is_none_or(|hs| hs.is_empty())
+}
+
+fn merge_hooks(mut root: Value, spec: &AgentSpec) -> Value {
+    if !root.is_object() {
+        root = json!({});
+    }
+    let obj = root.as_object_mut().unwrap();
+    let hooks = obj.entry("hooks").or_insert_with(|| json!({}));
+    if !hooks.is_object() {
+        *hooks = json!({});
+    }
+    let hooks = hooks.as_object_mut().unwrap();
+
+    for (event, marker) in spec.events {
+        let arr = hooks.entry(*event).or_insert_with(|| json!([]));
+        if !arr.is_array() {
+            *arr = json!([]);
+        }
+        let arr = arr.as_array_mut().unwrap();
+        arr.retain(|group| !is_ours(group) && !is_empty_group(group));
+        let mut group = json!({
+            "hooks": [ { "type": "command", "command": hook_command(spec, marker) } ]
+        });
+        if spec.matcher {
+            group["matcher"] = json!("*");
+        }
+        arr.push(group);
+    }
+    root
+}
+
+fn existing_config(contents: Option<&str>, path: &std::path::Path) -> Result<Value, String> {
+    match contents {
+        Some(s) if !s.trim().is_empty() => serde_json::from_str::<Value>(s).map_err(|e| {
+            format!("{} is not valid JSON ({e}); refusing to overwrite", path.display())
+        }),
+        _ => Ok(json!({})),
+    }
+}
+
+fn write_atomic(path: &std::path::Path, contents: &str) -> Result<(), String> {
+    let tmp = path.with_extension("puhon-tmp");
+    std::fs::write(&tmp, contents).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("rename into {}: {e}", path.display())
+    })
+}
+
+fn pi_extension_path() -> Result<std::path::PathBuf, String> {
+    home_path(PI_EXTENSION_DIR, PI_EXTENSION_FILE)
+}
+
+fn pi_extension_contents(existing: Option<&str>, path: &std::path::Path) -> Result<&'static str, String> {
+    if existing.is_some_and(|s| !s.trim().is_empty() && !s.contains(PI_EXTENSION_MARKER)) {
+        return Err(format!(
+            "{} is not managed by Puhon; refusing to overwrite",
+            path.display()
+        ));
+    }
+    Ok(PI_EXTENSION)
+}
+
+fn pi_extension_write_path(path: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            std::fs::canonicalize(path).map_err(|e| format!("resolve {}: {e}", path.display()))
+        }
+        Ok(_) => Ok(path.to_path_buf()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(path.to_path_buf()),
+        Err(e) => Err(format!("inspect {}: {e}", path.display())),
+    }
+}
+
+fn enable_pi_extension_at(path: &std::path::Path) -> Result<(), String> {
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    let existing = match std::fs::read_to_string(path) {
+        Ok(s) if s == PI_EXTENSION => return Ok(()),
+        Ok(s) => Some(s),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+    let contents = pi_extension_contents(existing.as_deref(), path)?;
+    write_atomic(&pi_extension_write_path(path)?, contents)
+}
+
+fn enable_pi_extension() -> Result<(), String> {
+    enable_pi_extension_at(&pi_extension_path()?)
+}
+
+const OPENCODE_PLUGIN_DIR: &str = ".config/opencode/plugin";
+const OPENCODE_PLUGIN_FILE: &str = "puhon-notifications.js";
+const OPENCODE_PLUGIN_MARKER: &str = "puhon-opencode-notifications-v1";
+const OPENCODE_STATUS_NEEDLES: &[&str] = &[
+    OPENCODE_PLUGIN_MARKER,
+    "session.status",
+    "notify;Puhon;opencode;${ev}",
+    "PTY_MARKER",
+];
+const OPENCODE_PLUGIN: &str = r#"// puhon-opencode-notifications-v1
+export const PuhonNotifications = async ({ $ }) => {
+  const PTY_MARKER = (ev) =>
+    `\u001b]777;notify;Puhon;opencode;${ev}\u0007`;
+  return {
+    event: async ({ event }) => {
+      if (!process.env.PUHON_TERMINAL) return;
+      if (event.type !== "session.status") return;
+      const status = event.properties?.status?.type ?? event.status?.type;
+      if (status === "busy") {
+        await $`printf ${PTY_MARKER("working")} > /dev/tty`;
+      } else if (status === "idle") {
+        await $`printf ${PTY_MARKER("finished")} > /dev/tty`;
+      }
+    },
+  };
+};
+export default PuhonNotifications;
+"#;
+
+fn opencode_plugin_path() -> Result<std::path::PathBuf, String> {
+    home_path(OPENCODE_PLUGIN_DIR, OPENCODE_PLUGIN_FILE)
+}
+
+fn opencode_plugin_contents(
+    existing: Option<&str>,
+    path: &std::path::Path,
+) -> Result<&'static str, String> {
+    if existing.is_some_and(|s| !s.trim().is_empty() && !s.contains(OPENCODE_PLUGIN_MARKER)) {
+        return Err(format!(
+            "{} is not managed by Puhon; refusing to overwrite",
+            path.display()
+        ));
+    }
+    Ok(OPENCODE_PLUGIN)
+}
+
+fn enable_opencode_plugin_at(path: &std::path::Path) -> Result<(), String> {
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    let existing = match std::fs::read_to_string(path) {
+        Ok(s) if s == OPENCODE_PLUGIN => return Ok(()),
+        Ok(s) => Some(s),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+    let contents = opencode_plugin_contents(existing.as_deref(), path)?;
+    write_atomic(&pi_extension_write_path(path)?, contents)
+}
+
+fn enable_opencode_plugin() -> Result<(), String> {
+    enable_opencode_plugin_at(&opencode_plugin_path()?)
+}
+
+fn opencode_plugin_status() -> bool {
+    opencode_plugin_path()
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .is_some_and(|content| OPENCODE_STATUS_NEEDLES.iter().all(|n| content.contains(n)))
+}
+
+#[cfg(any(windows, test))]
+fn conout_marker(agent: &str, event: &str) -> String {
+    format!("\x1b]777;notify;Puhon;{agent};{event}\x07")
+}
+
+#[cfg(windows)]
+pub fn emit_conout_marker(agent: &str, event: &str) {
+    use std::io::Write;
+    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+
+    if std::env::var_os("PUHON_TERMINAL").is_none() {
+        return;
+    }
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("CONOUT$")
+    {
+        let _ = f.write_all(conout_marker(agent, event).as_bytes());
+    }
+}
+
+#[tauri::command]
+pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
+    if agent == "pi" {
+        return enable_pi_extension();
+    }
+    if agent == "opencode" {
+        return enable_opencode_plugin();
+    }
+    let spec = find(&agent)?;
+    let path = settings_path(spec)?;
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+
+    let existing = match std::fs::read_to_string(&path) {
+        Ok(s) => existing_config(Some(&s), &path)?,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => json!({}),
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+
+    let merged = merge_hooks(existing, spec);
+    let out = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
+    write_atomic(&path, &out)
+}
+
+#[tauri::command]
+pub fn agent_hooks_status(agent: String) -> bool {
+    if agent == "pi" {
+        return pi_extension_path()
+            .ok()
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .is_some_and(|content| PI_STATUS_NEEDLES.iter().all(|n| content.contains(n)));
+    }
+    if agent == "opencode" {
+        return opencode_plugin_status();
+    }
+    let Ok(spec) = find(&agent) else { return false };
+    let Some(content) = settings_path(spec)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+    else {
+        return false;
+    };
+    spec.events
+        .iter()
+        .all(|(_, m)| content.contains(&status_needle(spec, m)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn find_returns_known_specs() {
+        assert_eq!(find("claude").unwrap().agent, "claude");
+        assert_eq!(find("codex").unwrap().agent, "codex");
+        assert_eq!(find("antigravity").unwrap().agent, "antigravity");
+        assert!(find("nope").is_err());
+    }
+
+    #[test]
+    fn claude_uses_terminal_sequence_delivery() {
+        assert_eq!(find("claude").unwrap().delivery, Delivery::TerminalSequence);
+    }
+
+    #[test]
+    fn codex_and_antigravity_use_osc_delivery() {
+        assert_eq!(find("codex").unwrap().delivery, Delivery::Osc);
+        assert_eq!(find("antigravity").unwrap().delivery, Delivery::Osc);
+    }
+
+    #[test]
+    fn antigravity_uses_matcher_and_gemini_dir() {
+        let s = find("antigravity").unwrap();
+        assert!(s.matcher);
+        assert_eq!(s.dir, ".gemini");
+        assert_eq!(s.file, "settings.json");
+    }
+
+    fn command(root: &Value, event: &str, idx: usize) -> String {
+        root["hooks"][event][idx]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    #[test]
+    fn claude_command_uses_terminal_sequence() {
+        let cmd = hook_command(find("claude").unwrap(), "finished");
+        assert!(cmd.contains("terminalSequence"));
+        assert!(cmd.contains("notify;Puhon;finished"));
+        assert!(!cmd.contains("/dev/tty"));
+        assert!(cmd.contains("$PUHON_TERMINAL"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn osc_command_unix_writes_four_field_to_dev_tty() {
+        let cmd = osc_command("codex", "finished");
+        assert!(cmd.contains("notify;Puhon;codex;finished"));
+        assert!(cmd.contains("> /dev/tty"));
+        assert!(cmd.contains("printf '{}'"));
+    }
+
+    #[test]
+    fn status_needle_matches_emitted_command() {
+        let s = find("codex").unwrap();
+        let needle = status_needle(s, "finished");
+        let cmd = hook_command(s, "finished");
+        assert!(cmd.contains(&needle), "needle {needle} not in {cmd}");
+    }
+
+    fn hook_count(root: &Value, event: &str) -> usize {
+        root["hooks"][event].as_array().map_or(0, Vec::len)
+    }
+
+    #[test]
+    fn claude_adds_all_event_hooks_to_empty_config() {
+        let out = merge_hooks(json!({}), find("claude").unwrap());
+        assert_eq!(hook_count(&out, "UserPromptSubmit"), 1);
+        assert_eq!(hook_count(&out, "Notification"), 1);
+        assert_eq!(hook_count(&out, "Stop"), 1);
+        assert!(command(&out, "Notification", 0).contains("notify;Puhon;attention"));
+        assert!(command(&out, "Stop", 0).contains("terminalSequence"));
+    }
+
+    #[test]
+    fn merge_is_idempotent_per_agent() {
+        for agent in ["claude", "codex", "antigravity"] {
+            let s = find(agent).unwrap();
+            let once = merge_hooks(json!({}), s);
+            let twice = merge_hooks(once.clone(), s);
+            assert_eq!(once, twice, "{agent} not idempotent");
+        }
+    }
+
+    #[test]
+    fn merge_preserves_foreign_hooks_and_prunes_empties() {
+        let foreign = json!({
+            "hooks": {
+                "UserPromptSubmit": [
+                    { "hooks": [ { "type": "command", "command": "echo user-hook" } ] }
+                ]
+            }
+        });
+        let out = merge_hooks(foreign, find("claude").unwrap());
+        assert_eq!(hook_count(&out, "UserPromptSubmit"), 2);
+    }
+
+    #[test]
+    fn antigravity_uses_matcher() {
+        let out = merge_hooks(json!({}), find("antigravity").unwrap());
+        assert_eq!(out["hooks"]["BeforeAgent"][0]["matcher"], "*");
+    }
+
+    #[test]
+    fn existing_config_rejects_invalid_json() {
+        let p = std::path::Path::new("/x");
+        assert!(existing_config(Some("not json"), p).is_err());
+        assert!(existing_config(Some(""), p).is_ok());
+        assert!(existing_config(None, p).is_ok());
+    }
+
+    #[test]
+    fn enable_writes_merged_config_atomically() {
+        let dir = std::env::temp_dir().join(format!("puhon-agent-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let merged = merge_hooks(json!({}), find("claude").unwrap());
+        let out = serde_json::to_string_pretty(&merged).unwrap();
+        write_atomic(&path, &out).unwrap();
+        let read = std::fs::read_to_string(&path).unwrap();
+        assert!(read.contains("notify;Puhon;finished"));
+
+        let twice = merge_hooks(serde_json::from_str(&read).unwrap(), find("claude").unwrap());
+        write_atomic(&path, &serde_json::to_string_pretty(&twice).unwrap()).unwrap();
+        let read2 = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(read.matches("notify;Puhon").count(), read2.matches("notify;Puhon").count());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn status_reports_true_when_all_needles_present() {
+        let dir = std::env::temp_dir().join(format!("puhon-status-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let merged = merge_hooks(json!({}), find("codex").unwrap());
+        std::fs::write(&path, serde_json::to_string_pretty(&merged).unwrap()).unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let s = find("codex").unwrap();
+        assert!(s.events.iter().all(|(_, m)| content.contains(&status_needle(s, m))));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn pi_extension_contains_markers_and_events() {
+        let path = std::path::Path::new("/x/puhon-notifications.ts");
+        let ext = pi_extension_contents(None, path).unwrap();
+        for needle in PI_STATUS_NEEDLES {
+            assert!(ext.contains(needle), "missing {needle}");
+        }
+        assert!(ext.contains("process.env.PUHON_TERMINAL"));
+        assert!(ext.contains("process.stdout.write"));
+    }
+
+    #[test]
+    fn pi_extension_refuses_foreign_file() {
+        let path = std::path::Path::new("/x/puhon-notifications.ts");
+        assert!(pi_extension_contents(Some("export const mine = true;"), path).is_err());
+        assert!(pi_extension_contents(Some(PI_EXTENSION), path).is_ok());
+        assert!(pi_extension_contents(Some(" \n"), path).is_ok());
+    }
+
+    #[test]
+    fn pi_install_is_atomic_idempotent_and_preserves_foreign_files() {
+        let dir = std::env::temp_dir().join(format!("puhon-pi-{}", std::process::id()));
+        let path = dir.join(PI_EXTENSION_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        enable_pi_extension_at(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), PI_EXTENSION);
+        enable_pi_extension_at(&path).unwrap();
+
+        std::fs::write(&path, "export const mine = true;").unwrap();
+        assert!(enable_pi_extension_at(&path).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "export const mine = true;");
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pi_install_preserves_symlink() {
+        use std::os::unix::fs::symlink;
+        let dir = std::env::temp_dir().join(format!("puhon-pi-link-{}", std::process::id()));
+        let target = dir.join("managed.ts");
+        let path = dir.join(PI_EXTENSION_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&target, format!("// {PI_EXTENSION_MARKER}\n")).unwrap();
+        symlink(&target, &path).unwrap();
+
+        enable_pi_extension_at(&path).unwrap();
+        assert!(std::fs::symlink_metadata(&path).unwrap().file_type().is_symlink());
+        assert_eq!(std::fs::read_to_string(target).unwrap(), PI_EXTENSION);
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn conout_marker_matches_detector_format() {
+        assert_eq!(
+            conout_marker("codex", "attention"),
+            "\u{1b}]777;notify;Puhon;codex;attention\u{7}"
+        );
+    }
+
+    #[test]
+    fn opencode_plugin_contains_markers_and_events() {
+        let path = std::path::Path::new("/x/puhon-notifications.js");
+        let plugin = opencode_plugin_contents(None, path).unwrap();
+        for needle in OPENCODE_STATUS_NEEDLES {
+            assert!(plugin.contains(needle), "missing {needle}");
+        }
+        assert!(plugin.contains("process.env.PUHON_TERMINAL"));
+        assert!(plugin.contains("session.status"));
+    }
+
+    #[test]
+    fn opencode_plugin_refuses_foreign_file() {
+        let path = std::path::Path::new("/x/puhon-notifications.js");
+        assert!(opencode_plugin_contents(Some("export const mine = 1;"), path).is_err());
+        assert!(opencode_plugin_contents(Some(OPENCODE_PLUGIN), path).is_ok());
+    }
+
+    #[test]
+    fn opencode_install_is_atomic_and_idempotent() {
+        let dir = std::env::temp_dir().join(format!("puhon-oc-{}", std::process::id()));
+        let path = dir.join(OPENCODE_PLUGIN_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        enable_opencode_plugin_at(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), OPENCODE_PLUGIN);
+        enable_opencode_plugin_at(&path).unwrap();
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+
