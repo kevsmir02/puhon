@@ -58,6 +58,32 @@ const AGENTS: &[AgentSpec] = &[
 
 const OWNED_MARKERS: &[&str] = &["notify;Puhon;", "puhon;notify", "__puhon_notify"];
 
+const PI_EXTENSION_DIR: &str = ".pi/agent/extensions";
+const PI_EXTENSION_FILE: &str = "puhon-notifications.ts";
+const PI_EXTENSION_MARKER: &str = "puhon-pi-notifications-v1";
+const PI_STATUS_NEEDLES: &[&str] = &[
+    PI_EXTENSION_MARKER,
+    "agent_start",
+    "agent_settled",
+    "notify;Puhon;pi;${event}",
+    "emit(\"working\")",
+    "emit(\"finished\")",
+];
+const PI_EXTENSION: &str = r#"// puhon-pi-notifications-v1
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  const emit = (event: "working" | "finished") => {
+    if (process.env.PUHON_TERMINAL) {
+      process.stdout.write(`\u001b]777;notify;Puhon;pi;${event}\u0007`);
+    }
+  };
+
+  pi.on("agent_start", () => emit("working"));
+  pi.on("agent_settled", () => emit("finished"));
+}
+"#;
+
 fn find(agent: &str) -> Result<&'static AgentSpec, String> {
     AGENTS
         .iter()
@@ -174,8 +200,59 @@ fn write_atomic(path: &std::path::Path, contents: &str) -> Result<(), String> {
     })
 }
 
+fn pi_extension_path() -> Result<std::path::PathBuf, String> {
+    home_path(PI_EXTENSION_DIR, PI_EXTENSION_FILE)
+}
+
+fn pi_extension_contents(existing: Option<&str>, path: &std::path::Path) -> Result<&'static str, String> {
+    if existing.is_some_and(|s| !s.trim().is_empty() && !s.contains(PI_EXTENSION_MARKER)) {
+        return Err(format!(
+            "{} is not managed by Puhon; refusing to overwrite",
+            path.display()
+        ));
+    }
+    Ok(PI_EXTENSION)
+}
+
+fn pi_extension_write_path(path: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            std::fs::canonicalize(path).map_err(|e| format!("resolve {}: {e}", path.display()))
+        }
+        Ok(_) => Ok(path.to_path_buf()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(path.to_path_buf()),
+        Err(e) => Err(format!("inspect {}: {e}", path.display())),
+    }
+}
+
+fn enable_pi_extension_at(path: &std::path::Path) -> Result<(), String> {
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    let existing = match std::fs::read_to_string(path) {
+        Ok(s) if s == PI_EXTENSION => return Ok(()),
+        Ok(s) => Some(s),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+    let contents = pi_extension_contents(existing.as_deref(), path)?;
+    write_atomic(&pi_extension_write_path(path)?, contents)
+}
+
+fn enable_pi_extension() -> Result<(), String> {
+    enable_pi_extension_at(&pi_extension_path()?)
+}
+
+fn enable_opencode_plugin() -> Result<(), String> { Ok(()) }
+fn opencode_plugin_status() -> bool { false }
+
 #[tauri::command]
 pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
+    if agent == "pi" {
+        return enable_pi_extension();
+    }
+    if agent == "opencode" {
+        return enable_opencode_plugin();
+    }
     let spec = find(&agent)?;
     let path = settings_path(spec)?;
     let dir = path.parent().unwrap();
@@ -194,6 +271,15 @@ pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn agent_hooks_status(agent: String) -> bool {
+    if agent == "pi" {
+        return pi_extension_path()
+            .ok()
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .is_some_and(|content| PI_STATUS_NEEDLES.iter().all(|n| content.contains(n)));
+    }
+    if agent == "opencode" {
+        return opencode_plugin_status();
+    }
     let Ok(spec) = find(&agent) else { return false };
     let Some(content) = settings_path(spec)
         .ok()
@@ -354,6 +440,61 @@ mod tests {
         let content = std::fs::read_to_string(&path).unwrap();
         let s = find("codex").unwrap();
         assert!(s.events.iter().all(|(_, m)| content.contains(&status_needle(s, m))));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn pi_extension_contains_markers_and_events() {
+        let path = std::path::Path::new("/x/puhon-notifications.ts");
+        let ext = pi_extension_contents(None, path).unwrap();
+        for needle in PI_STATUS_NEEDLES {
+            assert!(ext.contains(needle), "missing {needle}");
+        }
+        assert!(ext.contains("process.env.PUHON_TERMINAL"));
+        assert!(ext.contains("process.stdout.write"));
+    }
+
+    #[test]
+    fn pi_extension_refuses_foreign_file() {
+        let path = std::path::Path::new("/x/puhon-notifications.ts");
+        assert!(pi_extension_contents(Some("export const mine = true;"), path).is_err());
+        assert!(pi_extension_contents(Some(PI_EXTENSION), path).is_ok());
+        assert!(pi_extension_contents(Some(" \n"), path).is_ok());
+    }
+
+    #[test]
+    fn pi_install_is_atomic_idempotent_and_preserves_foreign_files() {
+        let dir = std::env::temp_dir().join(format!("puhon-pi-{}", std::process::id()));
+        let path = dir.join(PI_EXTENSION_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        enable_pi_extension_at(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), PI_EXTENSION);
+        enable_pi_extension_at(&path).unwrap();
+
+        std::fs::write(&path, "export const mine = true;").unwrap();
+        assert!(enable_pi_extension_at(&path).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "export const mine = true;");
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pi_install_preserves_symlink() {
+        use std::os::unix::fs::symlink;
+        let dir = std::env::temp_dir().join(format!("puhon-pi-link-{}", std::process::id()));
+        let target = dir.join("managed.ts");
+        let path = dir.join(PI_EXTENSION_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&target, format!("// {PI_EXTENSION_MARKER}\n")).unwrap();
+        symlink(&target, &path).unwrap();
+
+        enable_pi_extension_at(&path).unwrap();
+        assert!(std::fs::symlink_metadata(&path).unwrap().file_type().is_symlink());
+        assert_eq!(std::fs::read_to_string(target).unwrap(), PI_EXTENSION);
 
         std::fs::remove_dir_all(&dir).unwrap();
     }
