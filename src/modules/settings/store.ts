@@ -565,6 +565,11 @@ export async function resetShortcuts(): Promise<void> {
   await writePref(KEY_SHORTCUTS, DEFAULT_PREFERENCES.shortcuts);
 }
 
+export async function setAgentNotifications(value: boolean): Promise<void> {
+  await writePref(KEY_AGENT_NOTIFICATIONS, value);
+}
+
+
 export type PrefKey = keyof Preferences;
 
 /** Subscribe to changes from any window (settings → main). */
