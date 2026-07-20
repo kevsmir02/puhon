@@ -14,13 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-24.04
+          - platform: ubuntu-latest
             rust_target: x86_64-unknown-linux-gnu
             arch: x86_64
             asset_arch: amd64
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install Linux build dependencies
         run: |
@@ -35,9 +35,9 @@ jobs:
             xdg-utils \
             libfuse2t64
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
@@ -110,7 +110,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Patch latest.json with re-signed AppImage signatures
         env:
