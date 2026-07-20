@@ -10,6 +10,7 @@ import { quoteShellArg } from "@/lib/shellQuote";
 import { useZoom } from "@/lib/useZoom";
 import { isMarkdownPath } from "@/lib/utils";
 import { native } from "@/lib/native";
+import { AgentNotificationsBridge, NotificationBell } from "@/modules/agents";
 import { CommandPalette, createCommandItems } from "@/modules/command-palette";
 import {
   type EditorPaneHandle,
@@ -751,6 +752,15 @@ export default function App() {
     [focusPane],
   );
 
+  const handleActivateAgentLeaf = useCallback(
+    (tabId: number, leafId: number) => {
+      setActiveId(tabId);
+      const term = terminalRefs.current.get(leafId);
+      if (term) term.focus();
+    },
+    [setActiveId],
+  );
+
   const handleLeafExit = useCallback(
     (leafId: number, _code: number) => {
       const all = tabsRef.current;
@@ -971,6 +981,11 @@ export default function App() {
       <UpdaterProvider>
         <TooltipProvider>
           <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
+            <AgentNotificationsBridge
+              tabs={tabs}
+              activeId={activeId}
+              onActivate={handleActivateAgentLeaf}
+            />
             {!zenMode && (
               <Header
                 tabs={spaceTabs}
@@ -993,6 +1008,9 @@ export default function App() {
                 searchTarget={searchTarget}
                 searchRef={searchInlineRef}
                 onOverrideLanguage={setOverrideLanguage}
+                notificationBell={
+                  <NotificationBell onActivate={handleActivateAgentLeaf} />
+                }
               />
             )}
 
