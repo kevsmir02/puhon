@@ -18,10 +18,6 @@ jobs:
             rust_target: x86_64-unknown-linux-gnu
             arch: x86_64
             asset_arch: amd64
-          - platform: ubuntu-24.04-arm
-            rust_target: aarch64-unknown-linux-gnu
-            arch: aarch64
-            asset_arch: aarch64
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -123,16 +119,12 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           gh release download "$TAG" --pattern "latest.json" --clobber
-          for SUFFIX in amd64 x86_64 aarch64; do
+          for SUFFIX in amd64 x86_64; do
             gh release download "$TAG" --pattern "*_${SUFFIX}.AppImage.sig" --clobber || true
             SIG_FILE=$(ls ./*_${SUFFIX}.AppImage.sig 2>/dev/null | head -n1 || true)
             [ -n "$SIG_FILE" ] || continue
             NEW_SIG=$(cat "$SIG_FILE")
-            if [ "$SUFFIX" = "amd64" ] || [ "$SUFFIX" = "x86_64" ]; then
-              KEY="linux-x86_64"
-            else
-              KEY="linux-aarch64"
-            fi
+            KEY="linux-x86_64"
             jq -e --arg key "$KEY" 'has("platforms") and (.platforms | has($key))' latest.json >/dev/null \
               || { echo "latest.json missing platforms.$KEY"; exit 1; }
             jq --arg sig "$NEW_SIG" --arg key "$KEY" \
