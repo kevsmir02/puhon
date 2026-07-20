@@ -192,6 +192,20 @@ pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
     write_atomic(&path, &out)
 }
 
+#[tauri::command]
+pub fn agent_hooks_status(agent: String) -> bool {
+    let Ok(spec) = find(&agent) else { return false };
+    let Some(content) = settings_path(spec)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+    else {
+        return false;
+    };
+    spec.events
+        .iter()
+        .all(|(_, m)| content.contains(&status_needle(spec, m)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,6 +338,22 @@ mod tests {
         write_atomic(&path, &serde_json::to_string_pretty(&twice).unwrap()).unwrap();
         let read2 = std::fs::read_to_string(&path).unwrap();
         assert_eq!(read.matches("notify;Puhon").count(), read2.matches("notify;Puhon").count());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn status_reports_true_when_all_needles_present() {
+        let dir = std::env::temp_dir().join(format!("puhon-status-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let merged = merge_hooks(json!({}), find("codex").unwrap());
+        std::fs::write(&path, serde_json::to_string_pretty(&merged).unwrap()).unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let s = find("codex").unwrap();
+        assert!(s.events.iter().all(|(_, m)| content.contains(&status_needle(s, m))));
 
         std::fs::remove_dir_all(&dir).unwrap();
     }
