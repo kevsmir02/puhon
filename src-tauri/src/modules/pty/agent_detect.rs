@@ -275,7 +275,16 @@ const OSC_MAX: usize = 2048;
 const PUHON_MARKER: &[u8] = b"notify;Puhon;";
 
 #[allow(dead_code)]
-const DEFAULT_AGENTS: &[&str] = &["claude", "codex", "pi", "opencode", "antigravity"];
+const DEFAULT_AGENTS: &[&str] = &[
+    "claude",
+    "codex",
+    "pi",
+    "opencode",
+    "antigravity",
+    // Antigravity CLI is invoked as `agy`, with `gemini` as the legacy alias.
+    "agy",
+    "gemini",
+];
 
 #[cfg(test)]
 mod tests {
@@ -479,5 +488,13 @@ mod tests {
         let mut out = Vec::new();
         d.finish(|t| out.push(t));
         assert!(out.is_empty());
+    }
+
+    #[test]
+    fn match_agent_antigravity_aliases() {
+        let d = AgentDetector::new();
+        assert_eq!(d.match_agent(b"agy"), Some("agy".into()));
+        assert_eq!(d.match_agent(b"gemini"), Some("gemini".into()));
+        assert_eq!(d.match_agent(b"antigravity"), Some("antigravity".into()));
     }
 }
