@@ -1,0 +1,23 @@
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
+
+let granted = false;
+
+async function ensurePermission(): Promise<boolean> {
+  if (granted) return true;
+  let ok = await isPermissionGranted();
+  if (!ok) ok = (await requestPermission()) === "granted";
+  granted = ok;
+  return ok;
+}
+
+export async function osNotify(title: string, body: string): Promise<void> {
+  try {
+    if (await ensurePermission()) sendNotification({ title, body });
+  } catch (e) {
+    console.warn("[puhon] os notification failed:", e);
+  }
+}
