@@ -242,8 +242,75 @@ fn enable_pi_extension() -> Result<(), String> {
     enable_pi_extension_at(&pi_extension_path()?)
 }
 
-fn enable_opencode_plugin() -> Result<(), String> { Ok(()) }
-fn opencode_plugin_status() -> bool { false }
+const OPENCODE_PLUGIN_DIR: &str = ".config/opencode/plugin";
+const OPENCODE_PLUGIN_FILE: &str = "puhon-notifications.js";
+const OPENCODE_PLUGIN_MARKER: &str = "puhon-opencode-notifications-v1";
+const OPENCODE_STATUS_NEEDLES: &[&str] = &[
+    OPENCODE_PLUGIN_MARKER,
+    "session.status",
+    "notify;Puhon;opencode;${ev}",
+    "PTY_MARKER",
+];
+const OPENCODE_PLUGIN: &str = r#"// puhon-opencode-notifications-v1
+export const PuhonNotifications = async ({ $ }) => {
+  const PTY_MARKER = (ev) =>
+    `\u001b]777;notify;Puhon;opencode;${ev}\u0007`;
+  return {
+    event: async ({ event }) => {
+      if (!process.env.PUHON_TERMINAL) return;
+      if (event.type !== "session.status") return;
+      const status = event.properties?.status?.type ?? event.status?.type;
+      if (status === "busy") {
+        await $`printf ${PTY_MARKER("working")} > /dev/tty`;
+      } else if (status === "idle") {
+        await $`printf ${PTY_MARKER("finished")} > /dev/tty`;
+      }
+    },
+  };
+};
+export default PuhonNotifications;
+"#;
+
+fn opencode_plugin_path() -> Result<std::path::PathBuf, String> {
+    home_path(OPENCODE_PLUGIN_DIR, OPENCODE_PLUGIN_FILE)
+}
+
+fn opencode_plugin_contents(
+    existing: Option<&str>,
+    path: &std::path::Path,
+) -> Result<&'static str, String> {
+    if existing.is_some_and(|s| !s.trim().is_empty() && !s.contains(OPENCODE_PLUGIN_MARKER)) {
+        return Err(format!(
+            "{} is not managed by Puhon; refusing to overwrite",
+            path.display()
+        ));
+    }
+    Ok(OPENCODE_PLUGIN)
+}
+
+fn enable_opencode_plugin_at(path: &std::path::Path) -> Result<(), String> {
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    let existing = match std::fs::read_to_string(path) {
+        Ok(s) if s == OPENCODE_PLUGIN => return Ok(()),
+        Ok(s) => Some(s),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+    let contents = opencode_plugin_contents(existing.as_deref(), path)?;
+    write_atomic(&pi_extension_write_path(path)?, contents)
+}
+
+fn enable_opencode_plugin() -> Result<(), String> {
+    enable_opencode_plugin_at(&opencode_plugin_path()?)
+}
+
+fn opencode_plugin_status() -> bool {
+    opencode_plugin_path()
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .is_some_and(|content| OPENCODE_STATUS_NEEDLES.iter().all(|n| content.contains(n)))
+}
 
 #[cfg(any(windows, test))]
 fn conout_marker(agent: &str, event: &str) -> String {
@@ -530,6 +597,37 @@ mod tests {
             conout_marker("codex", "attention"),
             "\u{1b}]777;notify;Puhon;codex;attention\u{7}"
         );
+    }
+
+    #[test]
+    fn opencode_plugin_contains_markers_and_events() {
+        let path = std::path::Path::new("/x/puhon-notifications.js");
+        let plugin = opencode_plugin_contents(None, path).unwrap();
+        for needle in OPENCODE_STATUS_NEEDLES {
+            assert!(plugin.contains(needle), "missing {needle}");
+        }
+        assert!(plugin.contains("process.env.PUHON_TERMINAL"));
+        assert!(plugin.contains("session.status"));
+    }
+
+    #[test]
+    fn opencode_plugin_refuses_foreign_file() {
+        let path = std::path::Path::new("/x/puhon-notifications.js");
+        assert!(opencode_plugin_contents(Some("export const mine = 1;"), path).is_err());
+        assert!(opencode_plugin_contents(Some(OPENCODE_PLUGIN), path).is_ok());
+    }
+
+    #[test]
+    fn opencode_install_is_atomic_and_idempotent() {
+        let dir = std::env::temp_dir().join(format!("puhon-oc-{}", std::process::id()));
+        let path = dir.join(OPENCODE_PLUGIN_FILE);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        enable_opencode_plugin_at(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), OPENCODE_PLUGIN);
+        enable_opencode_plugin_at(&path).unwrap();
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
 
