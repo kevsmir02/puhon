@@ -245,6 +245,31 @@ fn enable_pi_extension() -> Result<(), String> {
 fn enable_opencode_plugin() -> Result<(), String> { Ok(()) }
 fn opencode_plugin_status() -> bool { false }
 
+#[cfg(any(windows, test))]
+fn conout_marker(agent: &str, event: &str) -> String {
+    format!("\x1b]777;notify;Puhon;{agent};{event}\x07")
+}
+
+#[cfg(windows)]
+pub fn emit_conout_marker(agent: &str, event: &str) {
+    use std::io::Write;
+    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+
+    if std::env::var_os("PUHON_TERMINAL").is_none() {
+        return;
+    }
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("CONOUT$")
+    {
+        let _ = f.write_all(conout_marker(agent, event).as_bytes());
+    }
+}
+
 #[tauri::command]
 pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
     if agent == "pi" {
@@ -497,6 +522,14 @@ mod tests {
         assert_eq!(std::fs::read_to_string(target).unwrap(), PI_EXTENSION);
 
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn conout_marker_matches_detector_format() {
+        assert_eq!(
+            conout_marker("codex", "attention"),
+            "\u{1b}]777;notify;Puhon;codex;attention\u{7}"
+        );
     }
 }
 
