@@ -156,6 +156,23 @@ impl AgentDetector {
     fn handle_osc133<F: FnMut(Transition)>(&mut self, _pt: &[u8], _emit: &mut F) {}
     fn handle_osc777<F: FnMut(Transition)>(&mut self, _pt: &[u8], _emit: &mut F) {}
     fn generic_attention<F: FnMut(Transition)>(&mut self, _emit: &mut F) {}
+
+    fn match_agent(&self, cmd: &[u8]) -> Option<String> {
+        let cmd = std::str::from_utf8(cmd).ok()?;
+        for token in cmd.split_whitespace() {
+            if token.starts_with('-') {
+                continue;
+            }
+            let base = token.rsplit(['/', '\\']).next().unwrap_or(token);
+            if let Some(agent) = self.agents.iter().find(|a| {
+                base.strip_prefix(a.as_str())
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('-'))
+            }) {
+                return Some(agent.clone());
+            }
+        }
+        None
+    }
 }
 
 impl Default for AgentDetector {
@@ -234,5 +251,35 @@ mod tests {
         seq.extend(std::iter::repeat_n(b'x', 2200));
         seq.extend_from_slice(&[0x1b, b'\\']);
         assert!(run(&mut d, &seq).is_empty());
+    }
+
+    #[test]
+    fn match_agent_bare_name() {
+        let d = AgentDetector::new();
+        assert_eq!(d.match_agent(b"claude"), Some("claude".into()));
+        assert_eq!(d.match_agent(b"pi"), Some("pi".into()));
+    }
+
+    #[test]
+    fn match_agent_pathed_or_wrapped() {
+        let d = AgentDetector::new();
+        assert_eq!(d.match_agent(b"/usr/local/bin/codex exec"), Some("codex".into()));
+        assert_eq!(d.match_agent(b"npx claude"), Some("claude".into()));
+        assert_eq!(d.match_agent(b".\\build\\antigravity"), Some("antigravity".into()));
+    }
+
+    #[test]
+    fn match_agent_dash_suffix_alias() {
+        let d = AgentDetector::new();
+        assert_eq!(d.match_agent(b"claude-enigma"), Some("claude".into()));
+    }
+
+    #[test]
+    fn match_agent_rejects_non_agents() {
+        let d = AgentDetector::new();
+        assert_eq!(d.match_agent(b"vim src/main.rs"), None);
+        assert_eq!(d.match_agent(b"cat claude.txt"), None);
+        assert_eq!(d.match_agent(b"claudexyz"), None);
+        assert_eq!(d.match_agent(b"opencodefoo"), None);
     }
 }
