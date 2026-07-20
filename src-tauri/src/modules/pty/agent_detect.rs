@@ -153,7 +153,46 @@ impl AgentDetector {
         }
     }
 
-    fn handle_osc133<F: FnMut(Transition)>(&mut self, _pt: &[u8], _emit: &mut F) {}
+    fn handle_osc133<F: FnMut(Transition)>(&mut self, pt: &[u8], emit: &mut F) {
+        match pt.first() {
+            Some(b'C') => {
+                if self.armed {
+                    return;
+                }
+                let cmd = pt.strip_prefix(b"C;").unwrap_or(b"");
+                if let Some(agent) = self.match_agent(cmd) {
+                    self.armed = true;
+                    self.status = Status::Working;
+                    emit(Transition::Started { agent });
+                }
+            }
+            Some(b'D') if self.armed => {
+                self.disarm();
+                emit(Transition::Exited);
+            }
+            _ => {}
+        }
+    }
+
+    fn ensure_armed<F: FnMut(Transition)>(&mut self, agent: &str, emit: &mut F) {
+        if !self.armed {
+            self.armed = true;
+            self.status = Status::Working;
+            emit(Transition::Started { agent: agent.to_string() });
+        }
+    }
+
+    fn set_working<F: FnMut(Transition)>(&mut self, emit: &mut F) {
+        if self.status != Status::Working {
+            self.status = Status::Working;
+            emit(Transition::Working);
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+        self.status = Status::Working;
+    }
     fn handle_osc777<F: FnMut(Transition)>(&mut self, _pt: &[u8], _emit: &mut F) {}
     fn generic_attention<F: FnMut(Transition)>(&mut self, _emit: &mut F) {}
 
@@ -281,5 +320,35 @@ mod tests {
         assert_eq!(d.match_agent(b"cat claude.txt"), None);
         assert_eq!(d.match_agent(b"claudexyz"), None);
         assert_eq!(d.match_agent(b"opencodefoo"), None);
+    }
+
+    fn started(agent: &str) -> Transition {
+        Transition::Started { agent: agent.into() }
+    }
+
+    #[test]
+    fn arms_on_agent_command_via_osc133c() {
+        let mut d = AgentDetector::new();
+        assert_eq!(run(&mut d, &osc("133;C;claude -p hello")), vec![started("claude")]);
+        run(&mut d, &osc("133;D;0"));
+        assert_eq!(run(&mut d, &osc("133;C;pi")), vec![started("pi")]);
+        run(&mut d, &osc("133;D;0"));
+        assert!(run(&mut d, &osc("133;C;vim src/main.rs")).is_empty());
+    }
+
+    #[test]
+    fn exits_on_osc133d_only_when_armed() {
+        let mut d = AgentDetector::new();
+        assert!(run(&mut d, &osc("133;D;0")).is_empty());
+        run(&mut d, &osc("133;C;codex"));
+        assert_eq!(run(&mut d, &osc("133;D;0")), vec![Transition::Exited]);
+        assert!(run(&mut d, &osc("133;D;0")).is_empty());
+    }
+
+    #[test]
+    fn osc133c_does_not_re_arm_while_armed() {
+        let mut d = AgentDetector::new();
+        run(&mut d, &osc("133;C;claude"));
+        assert!(run(&mut d, &osc("133;C;codex")).is_empty());
     }
 }
