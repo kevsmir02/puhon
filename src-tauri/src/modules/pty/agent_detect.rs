@@ -90,6 +90,15 @@ impl AgentDetector {
         }
     }
 
+    /// Called when the underlying PTY closes. Reports the agent as exited so the
+    /// UI does not leave a stale entry if the shell died mid-command.
+    pub fn finish<F: FnMut(Transition)>(&mut self, mut emit: F) {
+        if self.armed {
+            self.disarm();
+            emit(Transition::Exited);
+        }
+    }
+
     pub fn process<F: FnMut(Transition)>(&mut self, input: &[u8], mut emit: F) {
         if self.state == State::Ground && !input.contains(&ESC) {
             return;
@@ -450,5 +459,25 @@ mod tests {
         seq.extend_from_slice(b"0;set title");
         seq.push(BEL);
         assert!(run(&mut d, &seq).is_empty());
+    }
+
+    #[test]
+    fn finish_emits_exited_when_armed() {
+        let mut d = AgentDetector::new();
+        run(&mut d, &osc("133;C;claude"));
+        let mut out = Vec::new();
+        d.finish(|t| out.push(t));
+        assert_eq!(out, vec![Transition::Exited]);
+        let mut out2 = Vec::new();
+        d.finish(|t| out2.push(t));
+        assert!(out2.is_empty());
+    }
+
+    #[test]
+    fn finish_is_noop_when_not_armed() {
+        let mut d = AgentDetector::new();
+        let mut out = Vec::new();
+        d.finish(|t| out.push(t));
+        assert!(out.is_empty());
     }
 }
