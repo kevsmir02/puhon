@@ -165,6 +165,33 @@ fn existing_config(contents: Option<&str>, path: &std::path::Path) -> Result<Val
     }
 }
 
+fn write_atomic(path: &std::path::Path, contents: &str) -> Result<(), String> {
+    let tmp = path.with_extension("puhon-tmp");
+    std::fs::write(&tmp, contents).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("rename into {}: {e}", path.display())
+    })
+}
+
+#[tauri::command]
+pub fn agent_enable_hooks(agent: String) -> Result<(), String> {
+    let spec = find(&agent)?;
+    let path = settings_path(spec)?;
+    let dir = path.parent().unwrap();
+    std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+
+    let existing = match std::fs::read_to_string(&path) {
+        Ok(s) => existing_config(Some(&s), &path)?,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => json!({}),
+        Err(e) => return Err(format!("read {}: {e}", path.display())),
+    };
+
+    let merged = merge_hooks(existing, spec);
+    let out = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
+    write_atomic(&path, &out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -279,5 +306,27 @@ mod tests {
         assert!(existing_config(Some(""), p).is_ok());
         assert!(existing_config(None, p).is_ok());
     }
+
+    #[test]
+    fn enable_writes_merged_config_atomically() {
+        let dir = std::env::temp_dir().join(format!("puhon-agent-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let merged = merge_hooks(json!({}), find("claude").unwrap());
+        let out = serde_json::to_string_pretty(&merged).unwrap();
+        write_atomic(&path, &out).unwrap();
+        let read = std::fs::read_to_string(&path).unwrap();
+        assert!(read.contains("notify;Puhon;finished"));
+
+        let twice = merge_hooks(serde_json::from_str(&read).unwrap(), find("claude").unwrap());
+        write_atomic(&path, &serde_json::to_string_pretty(&twice).unwrap()).unwrap();
+        let read2 = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(read.matches("notify;Puhon").count(), read2.matches("notify;Puhon").count());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }
+
 
