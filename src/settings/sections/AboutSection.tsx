@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useUpdater } from "@/modules/updater";
 import { GithubIcon, Globe02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -24,30 +25,73 @@ export function AboutSection() {
   const [version, setVersion] = useState("");
   const [name, setName] = useState("Puhon");
   const [build, setBuild] = useState("");
+  const [copied, setCopied] = useState(false);
   const { status, check, install } = useUpdater();
+
   const checking = status.kind === "checking";
   const downloading = status.kind === "downloading";
+  const installing = status.kind === "installing";
   const ready = status.kind === "ready";
   const manualAvailable = status.kind === "manual-available";
+  const error = status.kind === "error";
+
+  const activePkg = ready ? status.info : downloading ? status.info : null;
+  const activeUpdate = ready
+    ? status.update
+    : downloading
+      ? status.update
+      : null;
+  const manual = manualAvailable ? status.info : null;
+
+  const manualVersion = manual ? manual.version : "";
+  const rpmCommand = `sudo dnf install ./puhon-${manualVersion}-1.x86_64.rpm`;
+
+  const copyCommand = async () => {
+    if (!navigator?.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(rpmCommand);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  const progress =
+    downloading && status.contentLength
+      ? Math.min(
+          100,
+          Math.round((status.downloaded / status.contentLength) * 100),
+        )
+      : null;
+
   const checkLabel =
     status.kind === "uptodate"
       ? "You're up to date"
-      : status.kind === "error"
+      : error
         ? "Check failed — retry"
         : checking
           ? "Checking…"
           : downloading
             ? "Downloading…"
-            : ready
-              ? status.update
-                ? "Restart to install"
-                : "Install this update"
-              : manualAvailable
-                ? `Update to v${status.info.version}`
-                : "Check for updates";
+            : installing
+              ? "Installing…"
+              : ready
+                ? activeUpdate
+                  ? "Restart to install update"
+                  : "Install update"
+                : manualAvailable
+                  ? `Download v${status.info.version}`
+                  : "Check for updates";
+
   const onUpdateClick = () => {
-    if (ready) void install();
-    else void check({ manual: true });
+    if (ready) {
+      void install();
+    } else if (manualAvailable && manual) {
+      void openUrl(manual.releaseUrl);
+    } else {
+      void check({ manual: true });
+    }
   };
 
   useEffect(() => {
@@ -118,12 +162,12 @@ export function AboutSection() {
         </dd>
       </dl>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2.5">
         <div className="flex gap-2">
           <Button
             size="sm"
             onClick={onUpdateClick}
-            disabled={checking || downloading || status.kind === "installing"}
+            disabled={checking || downloading || installing}
           >
             {checkLabel}
           </Button>
@@ -144,20 +188,57 @@ export function AboutSection() {
             Report an issue
           </Button>
         </div>
-        {status.kind === "error" && (
+
+        {downloading && (
+          <div className="flex flex-col gap-1.5 max-w-sm mt-1">
+            <Progress value={progress ?? undefined} className="h-1.5" />
+            <p className="text-[11px] text-muted-foreground">
+              {progress !== null
+                ? `Downloading update… ${progress}%`
+                : "Downloading update…"}
+            </p>
+          </div>
+        )}
+
+        {ready && (
+          <p className="text-[12px] text-emerald-400">
+            {activeUpdate
+              ? "Update downloaded! Click above to restart Puhon and finish installing."
+              : `Puhon v${activePkg?.version ?? ""} update ready. Click above to install (will ask for password if required).`}
+          </p>
+        )}
+
+        {installing && (
+          <p className="text-[12px] text-muted-foreground">
+            Installing update… please enter your password if prompted.
+          </p>
+        )}
+
+        {manual && (
+          <div className="flex flex-col gap-2 mt-1">
+            <p className="text-[12px] text-muted-foreground">
+              Puhon v{manual.version} is available. Download the package from
+              GitHub releases or run:
+            </p>
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 font-mono text-[12px]">
+              <span className="flex-1 select-all">$ {rpmCommand}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                onClick={() => void copyCommand()}
+              >
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {error && (
           <p className="font-mono text-[10.5px] break-all text-destructive/80">
             {status.message}
           </p>
         )}
-        {downloading && status.contentLength ? (
-          <p className="text-[11px] text-muted-foreground">
-            {Math.min(
-              100,
-              Math.round((status.downloaded / status.contentLength) * 100),
-            )}
-            %
-          </p>
-        ) : null}
       </div>
     </div>
   );

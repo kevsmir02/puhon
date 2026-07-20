@@ -47,7 +47,7 @@ fn command_succeeds(program: &str, args: &[&str]) -> bool {
 /// Puhon registers as `Puhon` under rpm and `puhon` under dpkg (productName,
 /// dpkg lowercases). Confirm exact casing at first release.
 fn rpm_registered() -> bool {
-    command_succeeds("rpm", &["-q", "Puhon"])
+    command_succeeds("rpm", &["-q", "puhon"]) || command_succeeds("rpm", &["-q", "Puhon"])
 }
 fn deb_registered() -> bool {
     command_succeeds("dpkg", &["-s", "puhon"])

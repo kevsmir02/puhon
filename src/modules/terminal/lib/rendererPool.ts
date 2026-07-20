@@ -290,7 +290,8 @@ function createSlot(): Slot {
       if (event.type === "keydown") {
         const targetLeafId = slot.currentLeafId;
         void readTerminalClipboard().then((text) => {
-          if (text && slot.currentLeafId === targetLeafId) slot.term.paste(text);
+          if (text && slot.currentLeafId === targetLeafId)
+            slot.term.paste(text);
         });
       }
       event.preventDefault();

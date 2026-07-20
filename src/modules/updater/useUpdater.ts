@@ -2,7 +2,15 @@ import { getVersion } from "@tauri-apps/api/app";
 import { arch } from "@tauri-apps/plugin-os";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   pickArtifactUrl,
   type GhAsset,
@@ -44,12 +52,18 @@ export type UpdaterStatus =
   | { kind: "available"; update: Update }
   | { kind: "manual-available"; info: ManualUpdateInfo }
   | { kind: "pkg-available"; info: PkgUpdateInfo }
-  | { kind: "downloading"; downloaded: number; contentLength: number | null; info?: PkgUpdateInfo; update?: Update }
+  | {
+      kind: "downloading";
+      downloaded: number;
+      contentLength: number | null;
+      info?: PkgUpdateInfo;
+      update?: Update;
+    }
   | { kind: "installing" }
   | { kind: "ready"; update?: Update; info?: PkgUpdateInfo; pkgPath?: string }
   | { kind: "error"; message: string };
 
-function parseVersion(v: string): number[] {
+export function parseVersion(v: string): number[] {
   return v
     .replace(/^v/, "")
     .split("-")[0]
@@ -57,7 +71,7 @@ function parseVersion(v: string): number[] {
     .map((p) => Number.parseInt(p, 10) || 0);
 }
 
-function isNewer(remote: string, current: string): boolean {
+export function isNewer(remote: string, current: string): boolean {
   const a = parseVersion(remote);
   const b = parseVersion(current);
   const len = Math.max(a.length, b.length);
@@ -146,14 +160,17 @@ export function UpdaterProvider({
     setIsManual(!!manual);
     if (!manual) {
       const last = Number(localStorage.getItem(LAST_CHECK_KEY) ?? 0);
-      if (Date.now() - last < CHECK_INTERVAL_MS) return;
+      if (Date.now() - last < CHECK_INTERVAL_MS) {
+        setStatus({ kind: "uptodate" });
+        return;
+      }
     }
     setStatus({ kind: "checking" });
     try {
       const detect: DetectResult = await updaterDetect();
       if (detect.isAppimage) {
         const update = await check();
-        if (update) {
+        if (update && isNewer(update.version, update.currentVersion)) {
           setStatus({
             kind: "downloading",
             downloaded: 0,
@@ -188,7 +205,7 @@ export function UpdaterProvider({
           }
         } else {
           setStatus({ kind: "uptodate" });
-          if (!manual) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+          localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
         }
         return;
       }
@@ -203,29 +220,32 @@ export function UpdaterProvider({
             info,
           });
           try {
-            const path = await updaterDownload(info.artifactUrl, (e: DownloadEvent) => {
-              if (e.event === "started")
-                setStatus({
-                  kind: "downloading",
-                  downloaded: 0,
-                  contentLength: e.contentLength,
-                  info,
-                });
-              else if (e.event === "progress")
-                setStatus({
-                  kind: "downloading",
-                  downloaded: e.downloaded,
-                  contentLength: e.total,
-                  info,
-                });
-            });
+            const path = await updaterDownload(
+              info.artifactUrl,
+              (e: DownloadEvent) => {
+                if (e.event === "started")
+                  setStatus({
+                    kind: "downloading",
+                    downloaded: 0,
+                    contentLength: e.contentLength,
+                    info,
+                  });
+                else if (e.event === "progress")
+                  setStatus({
+                    kind: "downloading",
+                    downloaded: e.downloaded,
+                    contentLength: e.total,
+                    info,
+                  });
+              },
+            );
             setStatus({ kind: "ready", info, pkgPath: path });
           } catch (err) {
             setStatus({ kind: "error", message: String(err) });
           }
         } else {
           setStatus({ kind: "uptodate" });
-          if (!manual) localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
+          localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
         }
         return;
       }
@@ -237,6 +257,7 @@ export function UpdaterProvider({
         });
       } else {
         setStatus({ kind: "uptodate" });
+        localStorage.setItem(LAST_CHECK_KEY, String(Date.now()));
       }
     } catch (err) {
       setStatus({ kind: "error", message: String(err) });
@@ -282,7 +303,7 @@ export function UpdaterProvider({
 
   const value = useMemo(
     () => ({ status, isManual, check: runCheck, install, dismiss }),
-    [status, isManual, runCheck, install, dismiss]
+    [status, isManual, runCheck, install, dismiss],
   );
 
   return createElement(UpdaterContext.Provider, { value }, children);
@@ -295,4 +316,3 @@ export function useUpdater() {
   }
   return context;
 }
-
