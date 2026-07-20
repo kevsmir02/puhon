@@ -7,3 +7,6 @@ pub mod session;
 pub mod shell;
 pub mod updater;
 pub mod workspace;
+
+pub(crate) mod agent;
+
