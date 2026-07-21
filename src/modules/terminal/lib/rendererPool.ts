@@ -18,6 +18,7 @@ import {
   terminalLineNavigationSequence,
   terminalWordNavigationSequence,
 } from "./keymap";
+import { leafEvictionScore } from "./rendererPoolDecisions";
 
 export const POOL_MAX_SIZE = 5;
 const FIT_DEBOUNCE_MS = 8;
@@ -322,18 +323,14 @@ function isAltScreen(s: Slot): boolean {
 
 function evictionScore(s: Slot): number {
   const leafId = s.currentLeafId;
-  const visible = leafId !== null && (adapter?.isLeafVisible(leafId) ?? false);
-  const busy = leafId !== null && (adapter?.isLeafBusy(leafId) ?? false);
-  const blocks = leafId !== null && (adapter?.isLeafBlocks(leafId) ?? false);
-  const focused = leafId !== null && (adapter?.isLeafFocused(leafId) ?? false);
-  return (
-    (visible ? 1000 : 0) +
-    (isAltScreen(s) ? 100 : 0) +
-    (busy ? 80 : 0) +
-    (blocks ? 50 : 0) +
-    (focused ? 10 : 0) +
-    s.lastUsedAt / 1e12
-  );
+  return leafEvictionScore({
+    visible: leafId !== null && (adapter?.isLeafVisible(leafId) ?? false),
+    altScreen: isAltScreen(s),
+    busy: leafId !== null && (adapter?.isLeafBusy(leafId) ?? false),
+    blocks: leafId !== null && (adapter?.isLeafBlocks(leafId) ?? false),
+    focused: leafId !== null && (adapter?.isLeafFocused(leafId) ?? false),
+    lastUsedAt: s.lastUsedAt,
+  });
 }
 
 function pickSlotFor(leafId: number): PickResult {
