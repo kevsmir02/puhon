@@ -28,6 +28,7 @@ pub async fn clipboard_read_image(app: tauri::AppHandle) -> Result<String, Strin
 /// Captures a screenshot using the OS-native tool, saves it as a PNG to the
 /// temp dir, and returns the file path. Blocks until the user completes or
 /// cancels the screenshot interaction.
+#[allow(clippy::needless_return)]
 #[tauri::command]
 pub async fn image_screenshot() -> Result<String, String> {
     let ts = std::time::SystemTime::now()

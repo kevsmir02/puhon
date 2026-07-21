@@ -61,6 +61,12 @@ impl UrlDetector {
     }
 }
 
+impl Default for UrlDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn strip_ansi_escapes(input: &[u8], out: &mut Vec<u8>) {
     let mut i = 0;
     let len = input.len();
