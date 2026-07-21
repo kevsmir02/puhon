@@ -13,6 +13,7 @@ import {
   readTerminalClipboard,
   writeTerminalClipboard,
 } from "./terminalClipboard";
+import { tryClipboardImagePaste, takeScreenshotAndPaste } from "./imagePaste";
 import {
   terminalDeleteSequence,
   terminalLineNavigationSequence,
@@ -287,13 +288,26 @@ function createSlot(): Slot {
       event.preventDefault();
       return false;
     }
+    if (isScreenshotShortcut(event)) {
+      if (event.type === "keydown") {
+        const targetLeafId = slot.currentLeafId;
+        if (targetLeafId !== null) void takeScreenshotAndPaste(targetLeafId);
+      }
+      event.preventDefault();
+      return false;
+    }
     if (isTerminalPaste(event)) {
       if (event.type === "keydown") {
         const targetLeafId = slot.currentLeafId;
-        void readTerminalClipboard().then((text) => {
-          if (text && slot.currentLeafId === targetLeafId)
-            slot.term.paste(text);
-        });
+        if (targetLeafId !== null) {
+          void tryClipboardImagePaste(targetLeafId).then((wasImage) => {
+            if (!wasImage && slot.currentLeafId === targetLeafId) {
+              void readTerminalClipboard().then((text) => {
+                if (text) slot.term.paste(text);
+              });
+            }
+          });
+        }
       }
       event.preventDefault();
       return false;
@@ -1054,13 +1068,40 @@ function isTerminalCopy(e: KeyboardEvent): boolean {
 }
 
 function isTerminalPaste(e: KeyboardEvent): boolean {
+  if (IS_MAC) {
+    return (
+      e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey &&
+      (e.code === "KeyV" || e.key === "v" || e.key === "V")
+    );
+  }
   return (
-    !IS_MAC &&
     e.ctrlKey &&
     e.shiftKey &&
     !e.altKey &&
     !e.metaKey &&
     (e.code === "KeyV" || e.key === "v" || e.key === "V")
+  );
+}
+
+function isScreenshotShortcut(e: KeyboardEvent): boolean {
+  if (IS_MAC) {
+    return (
+      e.metaKey &&
+      e.shiftKey &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      (e.code === "KeyS" || e.key === "s" || e.key === "S")
+    );
+  }
+  return (
+    e.ctrlKey &&
+    e.shiftKey &&
+    !e.altKey &&
+    !e.metaKey &&
+    (e.code === "KeyS" || e.key === "s" || e.key === "S")
   );
 }
 
