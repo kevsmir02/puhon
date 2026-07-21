@@ -322,6 +322,7 @@ pub fn run() {
             crate::modules::agent::agent_enable_hooks,
             crate::modules::agent::agent_hooks_status,
             crate::modules::clipboard::clipboard_read_image,
+            crate::modules::clipboard::image_screenshot,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
