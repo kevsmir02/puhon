@@ -73,6 +73,10 @@ The themes below frame every scope decision.
 - [x] Tab/pane layout restore across app restarts
 - [x] Persistent terminal scrollback across restarts (opt-in)
 
+### Agent Awareness
+
+- [x] **Agent-awareness layer.** Detect Codex, OpenCode, Pi, Claude Code, and friends running in the PTY and route their lifecycle (started / working / needs-attention / finished / exited) to an in-app bell and OS notifications when the tab is hidden. Installed via per-CLI hooks that emit an OSC marker on prompt, permission, and stop events; driven only by escape sequences so a repainting TUI never flaps; zero cost when no agent runs. This is the fork's reason to exist; nothing else on the roadmap serves the thesis as directly.
+
 ### Security
 
 - [x] Trust gating in terminal escape-sequence handling
@@ -82,7 +86,6 @@ The themes below frame every scope decision.
 
 ### Coming next
 
-- [ ] **Agent-awareness layer.** Detect Codex, OpenCode, Pi, Claude Code, and friends running in the PTY and route their lifecycle (started / working / needs-attention / finished / exited) to an in-app bell and OS notifications when the tab is hidden. Installed via per-CLI hooks that emit an OSC marker on prompt, permission, and stop events; driven only by escape sequences so a repainting TUI never flaps; zero cost when no agent runs. This is the fork's reason to exist; nothing else on the roadmap serves the thesis as directly.
 - [ ] **TUI compatibility regression harness.** Drive real agent CLIs and heavy full-screen TUIs (htop, lazygit, vim) through the PTY and snapshot the rendered grid, to catch ConPTY / OSC / renderer-pool regressions automatically. Protects the make-or-break surface instead of relying on manual testing.
 - [ ] **Drag a file or path into the terminal as a quoted path.** Reframed as an agent-input affordance (feed the running agent a file path quickly), not just terminal QoL.
 - [ ] **Web preview attribution.** Reliably tie an auto-detected dev server to the agent tab that started it, so the preview pill opens the right surface instead of a guessed one.
