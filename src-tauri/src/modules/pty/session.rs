@@ -187,7 +187,10 @@ pub fn spawn(
             let mut dropped_bytes: u64 = 0;
             loop {
                 match reader.read(&mut buf) {
-                    Ok(0) => break,
+                    Ok(0) => {
+                        url_detect.clear(id);
+                        break;
+                    }
                     Ok(n) => {
                         if !first_byte_r.load(Ordering::Relaxed) {
                             first_byte_r.store(true, Ordering::Release);

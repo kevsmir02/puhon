@@ -86,7 +86,7 @@ function handleSignal(sig: AgentSignal, ctx: Ctx): void {
       if (info) {
         const tab = ctx.tabs.find((t) => t.id === info.tabId);
         if (tab?.kind === "terminal" && tab.previewUrl) {
-          ctx.updateTab(tab.id, { previewUrl: undefined } as Partial<Tab>);
+          ctx.updateTab(tab.id, { previewUrl: undefined });
         }
       }
       return;
@@ -128,7 +128,8 @@ export function AgentNotificationsBridge({
       if (leafId === null) return;
       const info = tabInfo(ctxRef.current.tabs, leafId);
       if (!info) return;
-      ctxRef.current.updateTab(info.tabId, { previewUrl: e.payload.url } as Partial<Tab>);
+      const url = e.payload.url.replace("0.0.0.0", "localhost");
+      ctxRef.current.updateTab(info.tabId, { previewUrl: url });
     })
       .then((u) => {
         if (alive) unlistenUrl = u;

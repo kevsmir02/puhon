@@ -770,12 +770,12 @@ export default function App() {
   );
 
   const handleDismissPreviewUrls = useCallback(() => {
-    for (const t of tabs) {
+    for (const t of tabsRef.current) {
       if (t.kind === "terminal" && t.previewUrl) {
         updateTab(t.id, { previewUrl: undefined });
       }
     }
-  }, [tabs, updateTab]);
+  }, [updateTab]);
 
   const handlePreviewFromTab = useCallback(
     (_tabId: number, url: string, spaceId: string) => {
