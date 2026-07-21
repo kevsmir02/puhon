@@ -188,7 +188,6 @@ pub fn run() {
     workspace::init_launch_cwd(cli_dir.as_deref());
 
     let builder = tauri::Builder::default();
-    #[cfg(target_os = "linux")]
     let builder = builder.plugin(tauri_plugin_clipboard_manager::init());
     builder
         .plugin(tauri_plugin_process::init())
@@ -322,6 +321,7 @@ pub fn run() {
             history::history_list,
             crate::modules::agent::agent_enable_hooks,
             crate::modules::agent::agent_hooks_status,
+            crate::modules::clipboard::clipboard_read_image,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

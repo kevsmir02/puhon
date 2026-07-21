@@ -50,6 +50,8 @@ notify = "8.2.0"
 url = "2"
 minisign-verify = "0.2"
 which = "8.0.4"
+image = "0.25"
+tauri-plugin-clipboard-manager = "2"
 
 [dev-dependencies]
 proptest = "1"
@@ -67,7 +69,6 @@ objc2-foundation = { version = "0.3", features = [
 
 # WebKitGTK can't read external clipboard copies; mac/win webviews can.
 [target.'cfg(target_os = "linux")'.dependencies]
-tauri-plugin-clipboard-manager = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = [
