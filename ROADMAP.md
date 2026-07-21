@@ -39,6 +39,7 @@ The themes below frame every scope decision.
 - [x] Shell integration (cwd via OSC 7, prompt markers via OSC 133)
 - [x] Inline search, link detection, true-color
 - [x] Renderer slot pooling with lazy serialization (keeps many tabs mounted within a memory budget)
+- [x] **TUI compatibility regression harness.** Replay recorded asciicast-v2 cassettes through real osc-handlers and DormantRing into @xterm/headless, snapshot rendered grids, and golden-compare in CI.
 
 ### Editor
 
@@ -86,7 +87,6 @@ The themes below frame every scope decision.
 
 ### Coming next
 
-- [ ] **TUI compatibility regression harness.** Drive real agent CLIs and heavy full-screen TUIs (htop, lazygit, vim) through the PTY and snapshot the rendered grid, to catch ConPTY / OSC / renderer-pool regressions automatically. Protects the make-or-break surface instead of relying on manual testing.
 - [ ] **Drag a file or path into the terminal as a quoted path.** Reframed as an agent-input affordance (feed the running agent a file path quickly), not just terminal QoL.
 - [ ] **Web preview attribution.** Reliably tie an auto-detected dev server to the agent tab that started it, so the preview pill opens the right surface instead of a guessed one.
 - [ ] **macOS / Windows release pipeline.** The apps build and run on both, but the release workflow only cuts Linux artifacts. Add macOS / Windows legs when there is demand or a maintainer to verify them.
