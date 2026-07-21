@@ -62,6 +62,7 @@ The themes below frame every scope decision.
 
 - [x] Auto-detected local dev server preview (status-bar pill when a localhost URL appears)
 - [x] Image, PDF, and Markdown viewers, Mermaid diagrams
+- [x] **Web preview attribution.** Reliably tie an auto-detected dev server to the agent tab that started it, so the preview pill opens the right surface instead of a guessed one.
 - [x] Sandboxed iframe
 
 ### Platform Integration
@@ -88,7 +89,6 @@ The themes below frame every scope decision.
 ### Coming next
 
 - [ ] **Drag a file or path into the terminal as a quoted path.** Reframed as an agent-input affordance (feed the running agent a file path quickly), not just terminal QoL.
-- [ ] **Web preview attribution.** Reliably tie an auto-detected dev server to the agent tab that started it, so the preview pill opens the right surface instead of a guessed one.
 - [ ] **macOS / Windows release pipeline.** The apps build and run on both, but the release workflow only cuts Linux artifacts. Add macOS / Windows legs when there is demand or a maintainer to verify them.
 
 ### Longer horizon
