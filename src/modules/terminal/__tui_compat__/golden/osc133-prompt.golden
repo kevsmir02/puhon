@@ -1,0 +1,7 @@
+# title: osc133-prompt
+# cursor: [2, 2]
+# alt: false
+$ ls
+file_a file_b
+$
+

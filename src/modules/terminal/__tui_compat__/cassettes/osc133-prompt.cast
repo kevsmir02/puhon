@@ -1,0 +1,4 @@
+{"version":2,"width":40,"height":4,"title":"osc133-prompt","puhon":{"chunkTest":true}}
+[0,"o","\u001b]133;A\u0007$ \u001b]133;B\u0007"]
+[0.1,"o","ls\r\n"]
+[0.2,"o","\u001b]133;C\u0007file_a file_b\r\n\u001b]133;D;0\u0007$ \u001b]133;B\u0007"]

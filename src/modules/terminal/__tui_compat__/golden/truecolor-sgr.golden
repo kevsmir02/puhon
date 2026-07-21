@@ -1,0 +1,6 @@
+# title: truecolor-sgr
+# cursor: [0, 3]
+# alt: false
+RGB
+---serialize---
+[38;2;255;0;0mR[38;2;0;255;0mG[38;2;0;0;255mB[0m

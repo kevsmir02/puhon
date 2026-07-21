@@ -1,0 +1,4 @@
+{"version":2,"width":20,"height":4,"title":"altscreen-tui","puhon":{"chunkTest":true}}
+[0,"o","before\r\n"]
+[0.1,"o","\u001b[?1049h\u001b[2J\u001b[H\u001b[1;1H\u001b[7m TUI HEADER \u001b[0m"]
+[0.2,"o","\u001b[?1049l"]

@@ -1,0 +1,6 @@
+# title: wide-chars
+# cursor: [0, 5]
+# alt: false
+Ａ漢😀
+---serialize---
+Ａ漢😀
