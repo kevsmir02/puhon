@@ -157,6 +157,17 @@ async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Res
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // WebKitGTK's DMABUF/GBM renderer heap-corrupts in dri_destroy during
+    // WebProcess exit (Mesa dri_gbm + DRMDeviceManager teardown). Crash is
+    // harmless (process was already exiting) but spews a 46MB coredump every
+    // quit. Disable that renderer path on Linux; GL fallback is fine for a
+    // terminal app. Respect an explicit user override if set.
+    // Refs: WebKit df75fa9, bugs.webkit.org 283970.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     #[cfg(windows)]
     {
         let args: Vec<String> = std::env::args().collect();
