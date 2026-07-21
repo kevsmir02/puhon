@@ -1,5 +1,6 @@
 mod agent_detect;
 mod da_filter;
+mod url_detect;
 mod session;
 pub(crate) mod shell_init;
 
