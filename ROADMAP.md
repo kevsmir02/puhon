@@ -95,7 +95,7 @@ The themes below frame every scope decision.
 ### Longer horizon
 
 - [ ] **SSH support.** Run agents and dev servers on a remote box, controlled from local Puhon. The agent-awareness layer should work identically over the SSH PTY since it reads the same OSC stream. PTY auth and known_hosts first; SFTP and port forwarding later.
-- [ ] **Release automation.** CHANGELOG generation, version bump, tag flow.
+- [x] **Release automation.** CHANGELOG generation, version bump, tag flow.
 - [ ] **Selective TS-to-Rust migration**, only where a profiler shows measurable wins in the agent byte path (parsing, buffering, serialization). No speculative rewrites.
 
 ## Out of scope
