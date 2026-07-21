@@ -64,6 +64,8 @@ type Props = {
   /** Move a dragged tab to a new position (insertion gap index 0..tabs.length). */
   onReorder: (fromId: number, toGapIndex: number) => void;
   onOverrideLanguage?: (id: number, lang: string | null) => void;
+  /** Open a preview tab from a terminal tab's detected URL. */
+  onPreviewFromTab?: (tabId: number, url: string, spaceId: string) => void;
   compact?: boolean;
 };
 
@@ -82,6 +84,7 @@ export function TabBar({
   onRename,
   onReorder,
   onOverrideLanguage,
+  onPreviewFromTab,
   compact,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -247,7 +250,7 @@ export function TabBar({
                         compact ? "px-1.5" : "px-2",
                       )}
                     >
-                      <TabIcon tab={t} />
+                      <TabIcon tab={t} onPreviewFromTab={onPreviewFromTab} />
                       <TabRenameInput
                         initial={labelFor(t)}
                         onCommit={(value) => {
@@ -359,7 +362,7 @@ export function TabBar({
                             data-no-drag
                             className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm p-1 -m-1 transition-all hover:bg-accent hover:text-accent-foreground hover:ring-1 hover:ring-primary/30 hover:shadow-[0_0_4px_var(--color-popover-foreground)]"
                           >
-                            <TabIcon tab={t} />
+                            <TabIcon tab={t} onPreviewFromTab={onPreviewFromTab} />
                           </span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -440,7 +443,7 @@ export function TabBar({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <TabIcon tab={t} />
+                      <TabIcon tab={t} onPreviewFromTab={onPreviewFromTab} />
                     )}
                     {/* Preview tabs use italic to signal the transient state,
                         matching the visual convention from VSCode. */}
@@ -619,7 +622,13 @@ function DropIndicator() {
   );
 }
 
-export function TabIcon({ tab }: { tab: Tab }) {
+export function TabIcon({
+  tab,
+  onPreviewFromTab,
+}: {
+  tab: Tab;
+  onPreviewFromTab?: (tabId: number, url: string, spaceId: string) => void;
+}) {
   if (tab.kind === "editor" || tab.kind === "markdown") {
     const url =
       tab.kind === "editor" && tab.overrideLanguage
@@ -647,6 +656,30 @@ export function TabIcon({ tab }: { tab: Tab }) {
         strokeWidth={2}
         className="shrink-0"
       />
+    );
+  }
+  if (tab.kind === "terminal" && tab.previewUrl) {
+    return (
+      <span
+        role="button"
+        tabIndex={-1}
+        data-no-drag
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onPreviewFromTab?.(tab.id, tab.previewUrl!, tab.spaceId);
+        }}
+        title={`Preview ${tab.previewUrl}`}
+        className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 rounded-sm p-0.5 -m-0.5 transition-all hover:bg-accent"
+      >
+        <HugeiconsIcon
+          icon={Globe02Icon}
+          size={14}
+          strokeWidth={2}
+          className="shrink-0 text-green-500"
+        />
+        <span className="size-1.5 shrink-0 rounded-full bg-green-500" />
+      </span>
     );
   }
   if (tab.kind === "terminal" && tab.private) {
