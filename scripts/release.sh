@@ -12,6 +12,17 @@
 
 set -euo pipefail
 
+# macOS ships BSD sed (no -i without backup suffix, no 0,/RE/ range);
+# prefer gsed from Homebrew if available.
+SED=sed
+if command -v gsed >/dev/null 2>&1; then
+  SED=gsed
+elif ! sed --version 2>/dev/null | head -1 | grep -q GNU; then
+  # We are on BSD sed -- fail early with a helpful message.
+  echo "error: GNU sed is required. Install it with: brew install gnu-sed" >&2
+  exit 1
+fi
+
 DRY_RUN=false
 PRE=""
 BUMP=""
@@ -55,7 +66,7 @@ BEHIND="$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
 
 PKG_VER="$(jq -r '.version' package.json)"
 TAURI_VER="$(jq -r '.version' src-tauri/tauri.conf.json)"
-CARGO_VER="$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -1)"
+CARGO_VER="$($SED -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -1)"
 
 if [ "$PKG_VER" != "$TAURI_VER" ] || [ "$PKG_VER" != "$CARGO_VER" ]; then
   fail "version drift detected:
@@ -126,7 +137,7 @@ fi
 
 jq --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
 jq --arg v "$NEW" '.version = $v' src-tauri/tauri.conf.json > tauri.conf.json.tmp && mv tauri.conf.json.tmp src-tauri/tauri.conf.json
-sed -i "0,/^version = \".*\"$/s//version = \"$NEW\"/" src-tauri/Cargo.toml
+$SED -i "0,/^version = \".*\"$/s//version = \"$NEW\"/" src-tauri/Cargo.toml
 
 # Update Cargo.lock
 (cd src-tauri && cargo update -p puhon --precise "$NEW" --quiet)
@@ -135,7 +146,7 @@ sed -i "0,/^version = \".*\"$/s//version = \"$NEW\"/" src-tauri/Cargo.toml
 
 VERIFY_PKG="$(jq -r '.version' package.json)"
 VERIFY_TAURI="$(jq -r '.version' src-tauri/tauri.conf.json)"
-VERIFY_CARGO="$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -1)"
+VERIFY_CARGO="$($SED -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -1)"
 
 if [ "$VERIFY_PKG" != "$NEW" ] || [ "$VERIFY_TAURI" != "$NEW" ] || [ "$VERIFY_CARGO" != "$NEW" ]; then
   fail "post-bump verification failed:
