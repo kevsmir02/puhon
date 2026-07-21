@@ -19,6 +19,7 @@ import {
   saveScrollback,
 } from "@/modules/terminal/lib/useTerminalSession";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSpaces } from "@/modules/spaces";
 
 // Matches the renderer slot pool size — over this we'd evict an active leaf.
 export const MAX_PANES_PER_TAB = 4;
@@ -43,6 +44,8 @@ export type TerminalTab = TabBase & {
   customTitle?: string;
   /** Serialized xterm scrollback restored from disk on boot. */
   restoredState?: string;
+  /** Latest localhost URL detected in this tab's PTY output. Transient — never persisted. */
+  previewUrl?: string;
 };
 
 export type EditorTab = TabBase & {
@@ -582,6 +585,27 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     return id;
   }, []);
 
+  const openPreviewInSpace = useCallback((url: string, spaceId: string) => {
+    let targetId: number | null = null;
+    setTabs((curr) => {
+      const existing = curr.find(
+        (t) => t.kind === "preview" && t.url === url && t.spaceId === spaceId,
+      );
+      if (existing) {
+        targetId = existing.id;
+        return curr;
+      }
+      const id = nextIdRef.current++;
+      targetId = id;
+      return [...curr, { id, kind: "preview", spaceId, title: titleFromUrl(url), url }];
+    });
+    if (targetId !== null) {
+      setActiveId(targetId);
+      useSpaces.getState().setActive(spaceId);
+    }
+    return targetId!;
+  }, []);
+
   const newMarkdownTab = useCallback((path: string) => {
     let targetId: number | null = null;
     setTabs((curr) => {
@@ -1094,6 +1118,7 @@ export function useTabs(initial?: Partial<TerminalTab>) {
     openFileTab,
     pinTab,
     newPreviewTab,
+    openPreviewInSpace,
     newMarkdownTab,
     setMarkdownView,
     openGitDiffTab,
