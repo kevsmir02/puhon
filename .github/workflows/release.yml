@@ -55,6 +55,19 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            body="$(scripts/release-notes.sh "$TAG")"
+          else
+            body="Release notes generated on tag push. Triggered manually from branch $TAG."
+          fi
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$body" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - id: tauri
         uses: tauri-apps/tauri-action@v1
         env:
@@ -64,7 +77,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Puhon ${{ github.ref_name }}"
-          releaseBody: "See the assets to download and install. Auto-update is built in."
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.rust_target }} --bundles appimage,rpm,deb
