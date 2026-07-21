@@ -1,0 +1,11 @@
+{
+  "name": "puhon-cassette-recorder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node record.mjs"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  }
+}
