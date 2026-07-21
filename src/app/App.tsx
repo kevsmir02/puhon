@@ -106,6 +106,7 @@ export default function App() {
     openFileTab,
     pinTab,
     newPreviewTab,
+    openPreviewInSpace,
     newMarkdownTab,
     setMarkdownView,
     setOverrideLanguage,
@@ -761,6 +762,28 @@ export default function App() {
     [setActiveId],
   );
 
+  const handleOpenPreviewInSpace = useCallback(
+    (url: string, spaceId: string) => {
+      openPreviewInSpace(url, spaceId);
+    },
+    [openPreviewInSpace],
+  );
+
+  const handleDismissPreviewUrls = useCallback(() => {
+    for (const t of tabs) {
+      if (t.kind === "terminal" && t.previewUrl) {
+        updateTab(t.id, { previewUrl: undefined });
+      }
+    }
+  }, [tabs, updateTab]);
+
+  const handlePreviewFromTab = useCallback(
+    (_tabId: number, url: string, spaceId: string) => {
+      openPreviewInSpace(url, spaceId);
+    },
+    [openPreviewInSpace],
+  );
+
   const handleLeafExit = useCallback(
     (leafId: number, _code: number) => {
       const all = tabsRef.current;
@@ -1009,6 +1032,9 @@ export default function App() {
                 searchTarget={searchTarget}
                 searchRef={searchInlineRef}
                 onOverrideLanguage={setOverrideLanguage}
+                onOpenPreviewFromPill={handleOpenPreviewInSpace}
+                onDismissPreviewUrls={handleDismissPreviewUrls}
+                onPreviewFromTab={handlePreviewFromTab}
                 notificationBell={
                   <NotificationBell onActivate={handleActivateAgentLeaf} />
                 }

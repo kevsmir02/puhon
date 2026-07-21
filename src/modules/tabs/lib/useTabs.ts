@@ -121,6 +121,7 @@ export type TabPatch = Partial<{
   path: string;
   dirty: boolean;
   url: string;
+  previewUrl?: string;
   /** Empty string resets a terminal tab to its cwd-derived name. */
   customTitle: string;
   overrideLanguage: string | null;
@@ -864,6 +865,7 @@ export function useTabs(initial?: Partial<TerminalTab>) {
             ...x,
             ...(patch.title !== undefined && { title: patch.title }),
             ...(patch.cwd !== undefined && { cwd: patch.cwd }),
+            ...(patch.previewUrl !== undefined && { previewUrl: patch.previewUrl }),
             ...(patch.customTitle !== undefined && {
               customTitle:
                 patch.customTitle === "" ? undefined : patch.customTitle,

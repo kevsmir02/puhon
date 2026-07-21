@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { PreviewUrlPill } from "@/modules/preview";
 import {
   SearchInline,
   type SearchInlineHandle,
@@ -47,6 +48,9 @@ type Props = {
   searchTarget: SearchTarget;
   searchRef: RefObject<SearchInlineHandle | null>;
   notificationBell?: ReactNode;
+  onOpenPreviewFromPill: (url: string, spaceId: string) => void;
+  onDismissPreviewUrls: () => void;
+  onPreviewFromTab?: (tabId: number, url: string, spaceId: string) => void;
 };
 
 const COMPACT_WIDTH = 720;
@@ -73,6 +77,9 @@ export function Header({
   searchTarget,
   searchRef,
   notificationBell,
+  onOpenPreviewFromPill,
+  onDismissPreviewUrls,
+  onPreviewFromTab,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -154,6 +161,7 @@ export function Header({
           onRename={onRename}
           onReorder={onReorder}
           onOverrideLanguage={onOverrideLanguage}
+          onPreviewFromTab={onPreviewFromTab}
           compact={compact}
         />
         <div data-tauri-drag-region className="h-full min-w-2 flex-1" />
@@ -162,6 +170,12 @@ export function Header({
       <SearchInline ref={searchRef} target={searchTarget} compact={compact} />
 
       {notificationBell}
+      <PreviewUrlPill
+        tabs={tabs}
+        activeId={activeId}
+        onOpenPreview={onOpenPreviewFromPill}
+        onDismiss={onDismissPreviewUrls}
+      />
       {settingsButton}
 
       {USE_CUSTOM_WINDOW_CONTROLS && (
