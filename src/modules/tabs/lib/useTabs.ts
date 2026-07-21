@@ -865,7 +865,7 @@ export function useTabs(initial?: Partial<TerminalTab>) {
             ...x,
             ...(patch.title !== undefined && { title: patch.title }),
             ...(patch.cwd !== undefined && { cwd: patch.cwd }),
-            ...(patch.previewUrl !== undefined && { previewUrl: patch.previewUrl }),
+            ...("previewUrl" in patch && { previewUrl: patch.previewUrl }),
             ...(patch.customTitle !== undefined && {
               customTitle:
                 patch.customTitle === "" ? undefined : patch.customTitle,
