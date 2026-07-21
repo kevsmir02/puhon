@@ -43,6 +43,8 @@ import { useGitStatus } from "./lib/useGitStatus";
 import type { GitStatusCode } from "./lib/gitStatusUtils";
 import { useGlobalShortcuts } from "@/modules/shortcuts";
 import { usePreferencesStore } from "@/modules/settings/preferences";
+import { pasteIntoLeaf } from "@/modules/terminal/lib/rendererPool";
+import { formatDroppedPaths } from "@/modules/terminal/lib/quoteShellPath";
 import type { GitStatusSnapshot } from "@/lib/native";
 
 export type FileExplorerHandle = {
@@ -272,6 +274,9 @@ export const FileExplorer = memo(
       rootPath: rootPath ?? "",
       isDir: isDirAt,
       onMove: tree.movePath,
+      onDropToTerminal: (path, leafId) => {
+        pasteIntoLeaf(leafId, formatDroppedPaths([path]));
+      },
     });
 
     const fileDrop = useExplorerFileDrop({
