@@ -39,6 +39,7 @@ The themes below frame every scope decision.
 - [x] Shell integration (cwd via OSC 7, prompt markers via OSC 133)
 - [x] Inline search, link detection, true-color
 - [x] **Drag files from explorer into terminal.** Drag a file or path into the terminal as a quoted path — an agent-input affordance (feed the running agent a file path quickly). Shell-quoted absolute path paste with no Enter.
+- [x] **Image and screenshot input into agent prompts.** Cmd/Ctrl+V pastes clipboard images as temp PNG paths; Cmd/Ctrl+Shift+S captures screenshots and pastes the path. Bracketed paste of the file path so agents (Claude Code) read and attach the image.
 - [x] Renderer slot pooling with lazy serialization (keeps many tabs mounted within a memory budget)
 - [x] **TUI compatibility regression harness.** Replay recorded asciicast-v2 cassettes through real osc-handlers and DormantRing into @xterm/headless, snapshot rendered grids, and golden-compare in CI.
 
@@ -93,7 +94,6 @@ The themes below frame every scope decision.
 
 ### Longer horizon
 
-- [ ] **Image and screenshot input into agent prompts.** Agents accept image input; terminals do not. Scope a design for pasting or dragging an image into the terminal and attaching it to the running agent's prompt.
 - [ ] **SSH support.** Run agents and dev servers on a remote box, controlled from local Puhon. The agent-awareness layer should work identically over the SSH PTY since it reads the same OSC stream. PTY auth and known_hosts first; SFTP and port forwarding later.
 - [ ] **Release automation.** CHANGELOG generation, version bump, tag flow.
 - [ ] **Selective TS-to-Rust migration**, only where a profiler shows measurable wins in the agent byte path (parsing, buffering, serialization). No speculative rewrites.
