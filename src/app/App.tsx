@@ -985,6 +985,7 @@ export default function App() {
               tabs={tabs}
               activeId={activeId}
               onActivate={handleActivateAgentLeaf}
+              updateTab={updateTab}
             />
             {!zenMode && (
               <Header

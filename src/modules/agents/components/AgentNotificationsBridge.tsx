@@ -9,11 +9,15 @@ import { useWindowFocus } from "@/modules/agents/lib/useWindowFocus";
 import { useAgentStore } from "@/modules/agents/store/agentStore";
 
 type Activate = (tabId: number, leafId: number) => void;
+type UpdateTab = (id: number, patch: Partial<Tab>) => void;
+type PreviewUrlEvent = { pty_id: number; url: string };
+
 type Ctx = {
   tabs: Tab[];
   activeId: number;
   focused: boolean;
   onActivate: Activate;
+  updateTab: UpdateTab;
 };
 
 function tabInfo(tabs: Tab[], leafId: number): { tabId: number; title: string } | null {
@@ -76,9 +80,17 @@ function handleSignal(sig: AgentSignal, ctx: Ctx): void {
       if (session) route(session, "finished", ctx);
       return;
     }
-    case "exited":
+    case "exited": {
       store.finish(leafId);
+      const info = tabInfo(ctx.tabs, leafId);
+      if (info) {
+        const tab = ctx.tabs.find((t) => t.id === info.tabId);
+        if (tab?.kind === "terminal" && tab.previewUrl) {
+          ctx.updateTab(tab.id, { previewUrl: undefined } as Partial<Tab>);
+        }
+      }
       return;
+    }
   }
 }
 
@@ -86,29 +98,48 @@ export function AgentNotificationsBridge({
   tabs,
   activeId,
   onActivate,
+  updateTab,
 }: {
   tabs: Tab[];
   activeId: number;
   onActivate: Activate;
+  updateTab: UpdateTab;
 }) {
   const focused = useWindowFocus();
-  const ctxRef = useRef<Ctx>({ tabs, activeId, focused, onActivate });
-  ctxRef.current = { tabs, activeId, focused, onActivate };
+  const ctxRef = useRef<Ctx>({ tabs, activeId, focused, onActivate, updateTab });
+  ctxRef.current = { tabs, activeId, focused, onActivate, updateTab };
 
   useEffect(() => {
     let alive = true;
-    let unlisten: (() => void) | undefined;
+    let unlistenSignal: (() => void) | undefined;
+    let unlistenUrl: (() => void) | undefined;
+
     listen<AgentSignal>("puhon:agent-signal", (e) =>
       handleSignal(e.payload, ctxRef.current),
     )
       .then((u) => {
-        if (alive) unlisten = u;
+        if (alive) unlistenSignal = u;
         else u();
       })
       .catch(() => {});
+
+    listen<PreviewUrlEvent>("puhon:preview-url", (e) => {
+      const leafId = leafIdForPty(e.payload.pty_id);
+      if (leafId === null) return;
+      const info = tabInfo(ctxRef.current.tabs, leafId);
+      if (!info) return;
+      ctxRef.current.updateTab(info.tabId, { previewUrl: e.payload.url } as Partial<Tab>);
+    })
+      .then((u) => {
+        if (alive) unlistenUrl = u;
+        else u();
+      })
+      .catch(() => {});
+
     return () => {
       alive = false;
-      unlisten?.();
+      unlistenSignal?.();
+      unlistenUrl?.();
     };
   }, []);
 
