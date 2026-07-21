@@ -1,10 +1,12 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTerminalDropStore } from "@/modules/terminal/lib/dropStore";
 
 type Options = {
   rootPath: string;
   isDir: (path: string) => boolean | undefined;
   onMove: (from: string, toDir: string) => void;
+  onDropToTerminal?: (path: string, leafId: number) => void;
 };
 
 const THRESHOLD = 5;
@@ -42,17 +44,18 @@ export function resolveDropTarget(
 // native HTML5 DnD which Tauri intercepts when dragDropEnabled is on. The ghost
 // follows the cursor via direct DOM writes, so dragging re-renders only when the
 // drop target changes, not on every move.
-export function useExplorerDnd({ rootPath, isDir, onMove }: Options) {
+export function useExplorerDnd({ rootPath, isDir, onMove, onDropToTerminal }: Options) {
   const [dragLabel, setDragLabel] = useState<string | null>(null);
   const [dropTargetDir, setDropTargetDir] = useState<string | null>(null);
 
   const ghostElRef = useRef<HTMLDivElement | null>(null);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const dropTargetRef = useRef<string | null>(null);
+  const terminalTargetRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const optsRef = useRef({ rootPath, isDir, onMove });
-  optsRef.current = { rootPath, isDir, onMove };
+  const optsRef = useRef({ rootPath, isDir, onMove, onDropToTerminal });
+  optsRef.current = { rootPath, isDir, onMove, onDropToTerminal };
 
   const placeGhost = (x: number, y: number) => {
     lastPosRef.current = { x, y };
@@ -87,10 +90,27 @@ export function useExplorerDnd({ rootPath, isDir, onMove }: Options) {
       }
       placeGhost(ev.clientX, ev.clientY);
       const { rootPath, isDir } = optsRef.current;
-      const hit = document
-        .elementFromPoint(ev.clientX, ev.clientY)
-        ?.closest<HTMLElement>("[data-fs-path]");
-      const p = hit?.getAttribute("data-fs-path");
+      const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
+      const target = resolveDropTarget(el, rootPath, isDir);
+
+      if (target?.kind === "terminal") {
+        if (terminalTargetRef.current !== target.leafId) {
+          terminalTargetRef.current = target.leafId;
+          dropTargetRef.current = null;
+          setDropTargetDir(null);
+          useTerminalDropStore.getState().setTarget(target.leafId);
+        }
+        return;
+      }
+
+      // Not over a terminal pane — clear terminal target
+      if (terminalTargetRef.current !== null) {
+        terminalTargetRef.current = null;
+        useTerminalDropStore.getState().setTarget(null);
+      }
+
+      // Existing explorer drop target logic
+      const p = el?.closest<HTMLElement>("[data-fs-path]")?.getAttribute("data-fs-path");
       const t = p ? (isDir(p) ? p : parentDir(p)) : rootPath;
       const valid =
         t !== source && !t.startsWith(`${source}/`) && parentDir(source) !== t
@@ -110,15 +130,20 @@ export function useExplorerDnd({ rootPath, isDir, onMove }: Options) {
     const end = (commit: boolean) => {
       detach();
       if (!active) return;
-      if (commit && dropTargetRef.current)
+      if (commit && terminalTargetRef.current !== null) {
+        optsRef.current.onDropToTerminal?.(source, terminalTargetRef.current);
+      } else if (commit && dropTargetRef.current) {
         optsRef.current.onMove(source, dropTargetRef.current);
+      }
       suppressClickRef.current = true;
       setTimeout(() => {
         suppressClickRef.current = false;
       }, 0);
       dropTargetRef.current = null;
+      terminalTargetRef.current = null;
       setDragLabel(null);
       setDropTargetDir(null);
+      useTerminalDropStore.getState().setTarget(null);
     };
     const up = () => end(true);
     const cancel = () => end(false);
@@ -136,7 +161,13 @@ export function useExplorerDnd({ rootPath, isDir, onMove }: Options) {
     }
   }, []);
 
-  useEffect(() => () => cleanupRef.current?.(), []);
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+      useTerminalDropStore.getState().setTarget(null);
+    },
+    [],
+  );
 
   return { ghostRef, dragLabel, dropTargetDir, onPointerDown, onClickCapture };
 }
