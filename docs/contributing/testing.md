@@ -80,3 +80,21 @@ When testing `src/modules/ai/lib/security.ts` or the Rust equivalents, cover:
 - [`PUHON.md`](../../PUHON.md) - the architecture source of truth
 - [`CONTRIBUTING.md`](../../CONTRIBUTING.md) - quality bar, project layout, how to contribute
 - [`docs/README.md`](../README.md) - index of contributor guides
+
+## TUI compatibility harness
+
+The byte-to-grid path (PTY flusher, OSC parsing, renderer pool, DormantRing,
+xterm.js parsing) is the make-or-break surface for agent CLIs and full-screen
+TUIs. Unit tests cover the pure pieces; the integration harness replays
+recorded TUI byte streams through the real TS layer into `@xterm/headless`
+and golden-compares the rendered grid.
+
+- Location: `src/modules/terminal/__tui_compat__/`.
+- Cassettes are asciicast v2 `.cast` files; goldens are committed beside them.
+- Run: `pnpm test` (part of the normal suite).
+- Regenerate goldens: `HARNESS_UPDATE=1 pnpm test`, then review the diff.
+- Record a new cassette from a real program: `cd scripts/recorder && pnpm install && pnpm start -- --cmd <prog> --out <path> --keys '<keys>'`. The recorder is isolated so the root install (CI) never builds `node-pty`.
+
+A golden mismatch fails CI; updates require a deliberate commit so reviewers
+see the rendered-grid diff.
+
