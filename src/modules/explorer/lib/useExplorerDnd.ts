@@ -14,6 +14,30 @@ function parentDir(path: string): string {
   return i > 0 ? path.slice(0, i) : path;
 }
 
+export type DropTarget =
+  | { kind: "terminal"; leafId: number }
+  | { kind: "explorer"; dir: string }
+  | null;
+
+export function resolveDropTarget(
+  element: HTMLElement | null,
+  _rootPath: string,
+  isDir: (p: string) => boolean | undefined,
+): DropTarget {
+  if (!element) return null;
+  const leafEl = element.closest<HTMLElement>("[data-pane-leaf]");
+  if (leafEl) {
+    const leafId = Number(leafEl.dataset.paneLeaf);
+    return Number.isFinite(leafId) ? { kind: "terminal", leafId } : null;
+  }
+  const row = element.closest<HTMLElement>("[data-fs-path]");
+  if (row) {
+    const p = row.getAttribute("data-fs-path") as string;
+    return { kind: "explorer", dir: isDir(p) ? p : parentDir(p) };
+  }
+  return null;
+}
+
 // Pointer-based, delegated on the container (no per-row handlers); sidesteps
 // native HTML5 DnD which Tauri intercepts when dragDropEnabled is on. The ghost
 // follows the cursor via direct DOM writes, so dragging re-renders only when the
