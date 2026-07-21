@@ -38,6 +38,7 @@ The themes below frame every scope decision.
 - [x] Split panes
 - [x] Shell integration (cwd via OSC 7, prompt markers via OSC 133)
 - [x] Inline search, link detection, true-color
+- [x] **Drag files from explorer into terminal.** Drag a file or path into the terminal as a quoted path — an agent-input affordance (feed the running agent a file path quickly). Shell-quoted absolute path paste with no Enter.
 - [x] Renderer slot pooling with lazy serialization (keeps many tabs mounted within a memory budget)
 - [x] **TUI compatibility regression harness.** Replay recorded asciicast-v2 cassettes through real osc-handlers and DormantRing into @xterm/headless, snapshot rendered grids, and golden-compare in CI.
 
@@ -88,7 +89,6 @@ The themes below frame every scope decision.
 
 ### Coming next
 
-- [ ] **Drag a file or path into the terminal as a quoted path.** Reframed as an agent-input affordance (feed the running agent a file path quickly), not just terminal QoL.
 - [ ] **macOS / Windows release pipeline.** The apps build and run on both, but the release workflow only cuts Linux artifacts. Add macOS / Windows legs when there is demand or a maintainer to verify them.
 
 ### Longer horizon
