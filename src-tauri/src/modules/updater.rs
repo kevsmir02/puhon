@@ -102,6 +102,17 @@ pub fn is_within(parent: &Path, candidate: &Path) -> bool {
     canon_candidate_parent.join(file_name).starts_with(canon_parent)
 }
 
+pub fn download_filename_for_url(url: &str, pid: u32) -> String {
+    let ext = if url.ends_with(".rpm") {
+        "rpm"
+    } else if url.ends_with(".deb") {
+        "deb"
+    } else {
+        "pkg"
+    };
+    format!("puhon-{pid}.{ext}")
+}
+
 #[tauri::command]
 pub async fn updater_download(
     url: String,
@@ -117,7 +128,8 @@ pub async fn updater_download(
     let total = resp.content_length();
     let _ = on_event.send(DownloadEvent::Started { content_length: total });
 
-    let path = update_dir().join(format!("puhon-{}.pkg", std::process::id()));
+    let filename = download_filename_for_url(&url, std::process::id());
+    let path = update_dir().join(filename);
     let mut file = std::fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
     let mut stream = resp.bytes_stream();
     let mut downloaded: u64 = 0;
@@ -175,16 +187,23 @@ pub async fn updater_install(
         return Err("pkexec-missing: pkexec not found on PATH".into());
     }
 
-    let mut args = build_install_args(package_manager, &path);
-    let program = args.remove(0);
-    let status = Command::new(&program)
-        .args(&args)
-        .status()
-        .map_err(|e| format!("spawn {program}: {e}"))?;
-    if !status.success() {
-        return Err(format!("install exited {status}"));
-    }
-    Ok(())
+    let args = build_install_args(package_manager, &path);
+    tokio::task::spawn_blocking(move || {
+        let mut args = args;
+        let program = args.remove(0);
+        let status = Command::new(&program)
+            .args(&args)
+            .stdin(std::process::Stdio::null())
+            .env("DEBIAN_FRONTEND", "noninteractive")
+            .status()
+            .map_err(|e| format!("spawn {program}: {e}"))?;
+        if !status.success() {
+            return Err(format!("install exited {status}"));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("task error: {e}"))?
 }
 
 #[cfg(test)]
@@ -271,4 +290,21 @@ mod tests {
     fn sig_verify_rejects_malformed_inputs() {
         assert!(verify_signature(b"data", "not-a-sig", "not-a-key").is_err());
     }
+
+    #[test]
+    fn download_filename_uses_correct_extension() {
+        assert_eq!(
+            download_filename_for_url("https://github.com/kevsmir02/puhon/releases/download/v0.9.3/Puhon-0.9.3-1.x86_64.rpm", 1234),
+            "puhon-1234.rpm"
+        );
+        assert_eq!(
+            download_filename_for_url("https://github.com/kevsmir02/puhon/releases/download/v0.9.3/puhon_0.9.3_amd64.deb", 1234),
+            "puhon-1234.deb"
+        );
+        assert_eq!(
+            download_filename_for_url("https://github.com/kevsmir02/puhon/releases/download/v0.9.3/puhon.unknown", 1234),
+            "puhon-1234.pkg"
+        );
+    }
 }
+
