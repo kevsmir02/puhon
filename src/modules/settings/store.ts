@@ -1,6 +1,10 @@
 import type { KeyBinding, ShortcutId } from "@/modules/shortcuts/shortcuts";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { LazyStore } from "@tauri-apps/plugin-store";
+import {
+  fetchWebglCompat,
+  shouldDefaultDisableWebgl,
+} from "@/modules/terminal/lib/webglCompat";
 
 export type ThemePref = "system" | "light" | "dark";
 
@@ -261,6 +265,9 @@ export async function loadPreferences(): Promise<Preferences> {
   const entries = await store.entries();
   const map = new Map<string, unknown>(entries);
   const get = <T>(k: string): T | undefined => map.get(k) as T | undefined;
+  // Cheap one-shot detection for the Wayland+WebKitGTK WebGL-flush regression;
+  // only consulted when the user has not explicitly set the WebGL toggle.
+  const { sessionType: webglSessionType } = await fetchWebglCompat();
   return {
     theme: get<ThemePref>(KEY_THEME) ?? DEFAULT_PREFERENCES.theme,
     themeId: get<string>(KEY_THEME_ID) ?? DEFAULT_PREFERENCES.themeId,
@@ -301,9 +308,18 @@ export async function loadPreferences(): Promise<Preferences> {
     explorerGitDecorations:
       get<boolean>(KEY_EXPLORER_GIT_DECORATIONS) ??
       DEFAULT_PREFERENCES.explorerGitDecorations,
-    terminalWebglEnabled:
-      get<boolean>(KEY_TERMINAL_WEBGL_ENABLED) ??
-      DEFAULT_PREFERENCES.terminalWebglEnabled,
+    // WebGL default flips to off on Linux/Wayland where WebKitGTK 2.52+ skips
+    // canvas rAF composites until a user input event (xterm updates only paint
+    // on re-focus). Only the unset case is overridden — an explicit user choice
+    // always wins. See webglCompat.ts for the rationale and revisit once
+    // WebKitGTK ships a fix for the Wayland flush regression.
+    terminalWebglEnabled: ((): boolean => {
+      const stored = get<boolean>(KEY_TERMINAL_WEBGL_ENABLED);
+      if (stored !== undefined) return stored;
+      return shouldDefaultDisableWebgl(webglSessionType)
+        ? false
+        : DEFAULT_PREFERENCES.terminalWebglEnabled;
+    })(),
     terminalCursorBlink:
       get<boolean>(KEY_TERMINAL_CURSOR_BLINK) ??
       DEFAULT_PREFERENCES.terminalCursorBlink,

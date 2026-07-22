@@ -4,6 +4,24 @@ use modules::{fs, git, history, pty, session, shell, updater, workspace};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+
+/// Desktop session type surfaced to the renderer so it can choose sane WebGL
+/// defaults. WebKitGTK 2.52+ on Wayland stops flushing WebGL `<canvas>` rAF
+/// composites until a user input event, so xterm-webgl updates only paint on
+/// focus — the renderer auto-disables WebGL there unless the user opts in.
+/// Revisit once a WebKitGTK fix for the Wayland canvas-flush regression ships.
+#[derive(serde::Serialize)]
+struct WebglCompat {
+    /// Value of `XDG_SESSION_TYPE` (typically "wayland" / "x11" / None).
+    session_type: Option<String>,
+}
+
+#[tauri::command]
+fn webgl_compat_check() -> WebglCompat {
+    WebglCompat {
+        session_type: std::env::var("XDG_SESSION_TYPE").ok(),
+    }
+}
 #[cfg(target_os = "macos")]
 use tauri::{PhysicalPosition, WindowEvent};
 use tauri_plugin_window_state::StateFlags;
@@ -246,6 +264,7 @@ pub fn run() {
         .manage(LaunchDir(Mutex::new(cli_dir)))
         .manage(LaunchFiles(Mutex::new(launch.files)))
         .invoke_handler(tauri::generate_handler![
+            webgl_compat_check,
             pty::pty_open,
             pty::pty_write,
             pty::pty_resize,
